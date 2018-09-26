@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #include <assert.h>
 #include <sys/types.h>
@@ -35,34 +36,46 @@
 using namespace std;
 using namespace xcoin;
 
-void on_write(evutil_socket_t socket, short flags, void * args )
+static struct event_base *g_evbase;
+void buf_err_cb(struct bufferevent *bev, short what, void *arg);
+static void check_result(const char*, int);
+
+void 
+buf_write_cb(int fd, short events, void * args )
 {
-    char *msg = (char*)"Hello there!";
-    int ret = send(socket, msg, strlen(msg), 0);
-    printf("connected, write to server : %d\n", ret);
+    struct bufferevent *bev = (struct bufferevent*)args;
+    char *msg = (char*)"Hello there!\n";
+    cout << "connected to server" << endl;
+    if(bufferevent_write(bev, msg, strlen(msg)) != 0) {
+        cerr << "buf_write_cb(): failed" << endl;
+    }
 }
 
-void on_read(evutil_socket_t socket, short flags, void *args )
+void buf_read_cb(struct bufferevent *bev, void *arg )
 {
-    char buf[256];
-    Client *client = (Client *)args;
-
-    int ret = recv(socket, buf, 256, 0);
-    printf("read: %d bytes\n", ret);
-
-    if (ret == 0) {
-        printf("client disconnected \n");
-        close(socket);
-        event_base_loopexit(client->base_, NULL);
-        return ;
-    } else if (ret < 0) {
-        printf("socket error %s", strerror(errno));
-        close(socket);
-        event_base_loopexit(client->base_, NULL);
-        return;
+    Client* client = static_cast<Client*>(arg);
+    char data[8192];
+    size_t n;
+    cout << "Reading..." <<endl;
+    for(;;) {
+        n = bufferevent_read(bev, data, sizeof(data));
+        cout << "Read: " << n << endl;
+        if(n <= 0) {
+            break;
+        }
+        cout << data << endl;
     }
+}
 
-    printf("read: %s", buf);
+void buf_event_cb(struct bufferevent *bev, short events, void *ptr)
+{
+    if (events & BEV_EVENT_CONNECTED) {
+        cout << "connected to server" <<endl;
+    } 
+    else if (events & BEV_EVENT_ERROR) {
+        cerr << "bf_event_cb(): error" << endl;
+        bufferevent_free(bev);
+    }
 }
 
 int
@@ -111,17 +124,63 @@ start_client(XState* state, char* server_host_name)
 
     struct event *ev_read;
     struct event *ev_write;
-    struct event_base *base = event_base_new();
     struct timeval tv = {5, 0};
-    ev_read = event_new(base, state->client.sd_, EV_READ | EV_PERSIST, on_read, &state->client);
-    ev_write= event_new(base, state->client.sd_, EV_WRITE, on_write, NULL); /* Write once */
+    //ev_read = event_new(g_evbase, state->client.sd_, EV_READ | EV_PERSIST, on_read, &state->client);
+    
 
+    state->client.buf_ev_ = bufferevent_socket_new(g_evbase, state->client.sd_, BEV_OPT_CLOSE_ON_FREE);
+    bufferevent_enable(state->client.buf_ev_,  EV_WRITE);
+    //bufferevent_setcb(state->client.buf_ev_, NULL, buf_write_cb, buf_event_cb, NULL);
     //event_add(ev_read, NULL); /*  No echoing back yet */
+    ev_write= event_new(g_evbase, state->client.sd_, EV_WRITE, buf_write_cb, state->client.buf_ev_); /* Write once */
+
     event_add(ev_write, &tv); 
-    event_base_dispatch(base);
+    event_base_dispatch(g_evbase);
 
     return 0;
 }
+
+/* *
+ *  * Set a socket to non-blocking mode.
+ *   */
+int
+setnonblock(int fd)
+{
+    int flags;
+
+    flags = fcntl(fd, F_GETFL);
+    if (flags < 0)
+        return flags;
+    flags |= O_NONBLOCK;
+    if (fcntl(fd, F_SETFL, flags) < 0)
+        return -1;
+
+    return 0;
+}
+
+/*  Called when error  */
+void
+buf_err_cb(struct bufferevent *bev, short what, void *arg)
+{
+    Client *client = (Client *)arg;
+
+    if (what & BEV_EVENT_EOF) {
+        /*  Client disconnected, remove the read event and the
+         *   * free the client structure. */
+        printf("Client disconnected.\n");
+    }
+    else {
+        cerr <<"Client socket error, disconnecting" << endl;
+    }
+
+    /* TODO: Remove the client from the tailq. */
+    
+    bufferevent_free(client->buf_ev_);
+    close(client->sd_);
+    free(client);
+}
+
+
 
 void on_accept(int socket, short ev, void *arg)
 {
@@ -129,6 +188,8 @@ void on_accept(int socket, short ev, void *arg)
     struct sockaddr_in client_addr;
     struct event_base * base = (struct event_base*) arg;
     Client* client;
+
+    /*  Networking accepting new client  */
     socklen_t client_len = sizeof(client_addr);
     printf("Accepting conn \n");
 
@@ -139,16 +200,23 @@ void on_accept(int socket, short ev, void *arg)
         return;
     }
 
+    if (setnonblock(client_fd) < 0) {
+        cerr << "err: setnonblock failed" << endl;
+    }
+    
+    /* Create Client Instance */
     client = (Client *) calloc(1, sizeof(Client));
     if (client == NULL) {
         printf("err: client calloc failed\n");
         exit(1);
     }
+    client->sd_ = client_fd;
 
-    //printf("Accepted conn from %s\n", inet_ntoa(client_addr.sin_addr));
-    client->base_ = base; 
-    struct event * ev_read = event_new(base, client_fd, EV_READ | EV_PERSIST, on_read, client);
-    event_add(ev_read, NULL);
+    client->buf_ev_ = bufferevent_socket_new(g_evbase, client_fd, BEV_OPT_CLOSE_ON_FREE);
+    bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, client);
+    bufferevent_enable(client->buf_ev_, EV_READ | EV_WRITE);
+
+    /* TODO: add the client to the peers */
 }
 
 int 
@@ -166,6 +234,8 @@ start_server(XState * state)
     bind_address.sin_family = AF_INET;
     bind_address.sin_addr.s_addr = INADDR_ANY;
     bind_address.sin_port = htons(MY_PORT);
+    
+
 
     /*  bind the socket to ther server port */
     int res = bind(state->server.sd_, (struct sockaddr *) &bind_address, sizeof(bind_address));
@@ -179,14 +249,17 @@ start_server(XState * state)
         return -1;
     }
 
-    struct event *ev_accept; 
-    struct event_base *base = event_base_new();
+    int reuseaddr_on = 1;
+    setsockopt(state->server.sd_, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on, 
+                sizeof(reuseaddr_on));
 
-    ev_accept = event_new(base, state->server.sd_, EV_READ | EV_PERSIST, on_accept, base);
+    struct event *ev_accept; 
+
+    ev_accept = event_new(g_evbase, state->server.sd_, EV_READ | EV_PERSIST, on_accept, NULL);
     event_add(ev_accept, NULL);
     
     printf("Waiting for connection \n");
-    event_base_dispatch(base);
+    event_base_dispatch(g_evbase);
 
     return 0;
 }
@@ -216,13 +289,17 @@ init(int argc, char* argv[])
     assert(state);
     
 
-    if (argc == 2) {
-        printf("Starting Client\n");
-        res = start_client(state, argv[1]);
-    } else {
-        printf("Starting Server\n");
-        res = start_server(state);
-    }
+   if (argc == 2) {
+       printf("Starting Client\n");
+       res = start_client(state, argv[1]);
+   } else {
+       printf("Starting Server\n");
+       res = start_server(state);
+   }
+   
+    //res = start_server(state);
+
+    check_result("init(): init server failes\n",res);
     
     /*  TODO: check failure */
     return state;
@@ -237,12 +314,23 @@ int main(int argc, char*argv[])
     pthread_t t2;
     long time = 100;
     void *status;
+    g_evbase = event_base_new();
 
     pthread_create(&t1, NULL, mine, (void *) time);
-    pthread_create(&t2, NULL, mine, (void *) time);
+
+    init(argc, argv);
+
 
     pthread_join(t1, &status);
-    pthread_join(t2, &status);
-
     pthread_exit(NULL);
+}
+
+
+static void 
+check_result(const char* msg, int res) 
+{
+    if(res) {
+        cout << string(msg) << endl;
+        exit(1);
+    }
 }

@@ -15,8 +15,7 @@ namespace xcoin {
         int sd_;
         char* server_host_name_;
         in_addr_t server_ip_;
-        struct event_base* base_;
-        struct event* ev_read_;
+        struct bufferevent * buf_ev_;
     };
 
     struct _XState {
