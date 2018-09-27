@@ -21,7 +21,25 @@ namespace xcoin {
     struct _XState {
         Server server;
         Client client;
+        struct event_base * evbase_;
+
+        char* peer_name_;
+
+        /*  Communication Sockets to Miner */
+        struct bufferevent * r_bev_;
+        struct bufferevent * w_bev_;
+
     };
+
+    class MinerState {
+        public:
+            struct event_base * evbase_ ;
+            struct bufferevent* r_bev_;
+            struct bufferevent* w_bev_;
+            struct evbuffer * w_out_;
+            int time;
+    };
+
 
 }
 
