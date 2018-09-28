@@ -29,6 +29,7 @@ namespace xcoin {
         struct bufferevent * r_bev_;
         struct bufferevent * w_bev_;
 
+
     };
 
     class MinerState {
