@@ -305,7 +305,7 @@ start_server(XState * state)
 
 
     struct event *ev_accept; 
-    ev_accept = event_new(state->evbase_, state->server.sd_, EV_READ | EV_PERSIST, on_accept, NULL);
+    ev_accept = event_new(state->evbase_, state->server.sd_, EV_READ | EV_PERSIST, on_accept, state);
     event_add(ev_accept, NULL);
     
     /*  Running  */
@@ -315,7 +315,6 @@ start_server(XState * state)
     create_miner(state);
     
     //event_base_loop(state->evbase_, EVLOOP_NONBLOCK);
-    event_base_dispatch(state->evbase_);
     return 0;
 }
 
@@ -471,6 +470,8 @@ init(int argc, char* argv[])
        cout << "Server Started....Looping\n";
        int sent_block = 0;
        while(true) {
+           /* Loop to pull events */
+           event_base_loop(state->evbase_, EVLOOP_NONBLOCK);
             if(N_NEXT_BLOCK != -1) {
                 cout << "Mined block :" << N_NEXT_BLOCK <<endl;
                 
