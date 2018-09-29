@@ -5,6 +5,7 @@ namespace xcoin {
     typedef struct _XState XState;
     typedef struct _Client Client;
     typedef struct _Server Server;
+    class MinerState;
 
 
     struct _Server {
@@ -21,8 +22,14 @@ namespace xcoin {
     struct _XState {
         Server server;
         Client client;
+        
+        /*  For incoming client instance. For callback */
+        Client * in_client_;
         struct event_base * evbase_;
+
+        /*  Miner state */
         struct event_base * miner_base_;
+        MinerState * miner_state_;
 
         char* peer_name_;
 
@@ -35,11 +42,14 @@ namespace xcoin {
     class MinerState {
         public:
             struct event_base * evbase_ ;
+            struct event* mine_ev_;
             struct bufferevent* r_bev_;
             struct bufferevent* w_bev_;
             struct evbuffer * w_out_;
-            int time;
-            int cur_block;
+            int time_;
+            int cur_block_;
+
+            void reset_mining(int);
     };
 
 

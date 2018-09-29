@@ -44,10 +44,8 @@
     <host id="peer1" geocodehint="US">
         <process plugin="xcoin" starttime="1" arguments=""/>
     </host>
-    <!-- 
     <host id="peer2">
-        <process plugin="xcoin" starttime="1" arguments="peer1" />
+        <process plugin="xcoin" starttime="10" arguments="peer1" />
     </host>
-    -->
 
 </shadow>

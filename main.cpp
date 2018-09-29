@@ -53,10 +53,12 @@ static void check_result(const char*, int);
 static stack<int> MINE_BLOCKS_Q;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
-static int N_CLIENT_NEXT_BLOCK = 3;
+static int N_CLIENT_NEXT_BLOCK = 10;
 
 static pthread_cond_t COND = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t MUTEX = PTHREAD_MUTEX_INITIALIZER;
+
+
 
 void 
 buf_write_cb(int fd, short events, void * args )
@@ -69,6 +71,7 @@ buf_write_cb(int fd, short events, void * args )
     N_CLIENT_NEXT_BLOCK++;
     
     data = ss.str();
+    ss.clear();
     if(bufferevent_write(bev, data.c_str(), data.size()) != 0) {
         cerr << "buf_write_cb(): failed" << endl;
     }
@@ -77,7 +80,7 @@ buf_write_cb(int fd, short events, void * args )
 void buf_read_cb(struct bufferevent *bev, void *arg )
 {
     cout << "Reading..." <<endl;
-    Client* client = static_cast<Client*>(arg);
+    XState* state = static_cast<XState*>(arg);
     char data[8192];
     size_t n;
     stringstream ss;
@@ -92,16 +95,13 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         
         /*  Append to the stack */
         ss << data;
-        
-        /* FIXME: checking on number */
-        int received_block;
-        ss >> received_block;
-        
-        /*  FIXME: checking errors */
-        pthread_mutex_lock(&MUTEX);
-        MINE_BLOCKS_Q.push(received_block);
-        pthread_cond_signal(&COND);
-        pthread_mutex_unlock(&MUTEX);
+        string blk_str = ss.str();
+        ss.clear();
+
+        /*  Pass next miner block */
+        if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
+            cerr << "buf_read_cb() : failed writing" <<endl;
+        }
     }
 }
 
@@ -183,8 +183,7 @@ start_client(XState* state, char* server_host_name)
     ev_write= event_new(state->evbase_, state->client.sd_, EV_WRITE, buf_write_cb, state->client.buf_ev_); /* Write once */
 
     event_add(ev_write, &tv); 
-    event_base_loop(state->evbase_, EVLOOP_NONBLOCK);
-    while(1){}
+    event_base_dispatch(state->evbase_);
 
     return 0;
 }
@@ -211,7 +210,8 @@ setnonblock(int fd)
 void
 buf_err_cb(struct bufferevent *bev, short what, void *arg)
 {
-    Client *client = (Client *)arg;
+    XState *state = (XState *)arg;
+    Client *client = state->in_client_;
     cout<< "buf_err_cb" << endl;
     if (what & BEV_EVENT_EOF) {
         /*  Client disconnected, remove the read event and the
@@ -261,7 +261,9 @@ void on_accept(int socket, short ev, void *arg)
     }
     client->sd_ = client_fd;
     client->buf_ev_ = bufferevent_socket_new(state->evbase_, client_fd, 0);
-    bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, client);
+
+    state->in_client_ = client;
+    bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, state);
     bufferevent_enable(client->buf_ev_, EV_READ | EV_WRITE);
 
     /* TODO: add the client to the peers */
@@ -315,18 +317,19 @@ start_server(XState * state)
     /*  Set up mining thread */
     create_miner(state);
     
-    //event_base_loop(state->evbase_, EVLOOP_NONBLOCK);
     return 0;
 }
 
 void
 miner_on_read(struct bufferevent *bev, void *arg)
 {
-    char data[8192];
     size_t n;
+    stringstream ss;
+    int new_block;
     MinerState* s = static_cast<MinerState*>(arg);
 
     for(;;) {
+        char data[128];
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
@@ -335,11 +338,15 @@ miner_on_read(struct bufferevent *bev, void *arg)
             << n  << " Bytes\n"
             << data 
             << endl;
+
+        ss << data;
+        ss >> new_block;
+        ss.clear();
+
+        /*  Cancel the mining */
+        s->reset_mining(new_block);
     }
     
-    /*  Cancel the mining */
-
-    /*  Update the state */
 }
 
 void 
@@ -365,14 +372,13 @@ void
 on_mine(int fd, short events, void* aux) 
 {
     MinerState *my_state = static_cast<MinerState*>(aux);
-    cout << "Yes, new block:" << my_state->cur_block <<  endl;
+    cout << "Yes, new block:" << my_state->cur_block_ <<  endl;
 
     stringstream ss;
     string data;
     cout << "buf_write_cb(): called" << endl;
-    ss << N_CLIENT_NEXT_BLOCK;
-    N_CLIENT_NEXT_BLOCK++;
-    
+    ss << my_state->cur_block_;
+    my_state->cur_block_++; 
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
         cerr << "mine(): failed send to main\n";
@@ -437,10 +443,9 @@ mine(void* aux)
     
     /*  Setup MIning Event */
     struct timeval tv = {5, 0};
-    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST , on_mine, my_state);
-        //evtimer_new(miner_state->evbase_, on_mine, miner_state);  
+    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
     evtimer_add(mine_ev, &tv);
-    
+    my_state->mine_ev_ = mine_ev;
     event_base_dispatch(my_state->evbase_);
 
     //while(true) {
@@ -487,8 +492,7 @@ init(int argc, char* argv[])
 {
     /*  FIXME: check input */
     int res; 
-
-    XState *state = static_cast<XState*>(calloc(1, sizeof(XState)));
+    XState* state = static_cast<XState*>(calloc(1, sizeof(XState)));
     assert(state);
     state->evbase_ = event_base_new();
 
@@ -542,10 +546,10 @@ on_kill(int fd, short events, void* aux)
 {
     XState* state = static_cast<XState*>(aux);
     
-    struct timeval tv { 1,0};
+    //struct timeval tv { 1,0};
     cout << "Shutting down miner" << endl;
     event_base_loopbreak(state->miner_base_);
-    event_base_loopexit(state->evbase_, &tv);
+    event_base_loopbreak(state->evbase_);
 }
 
 int
@@ -560,7 +564,7 @@ create_miner(XState *state)
     /* Miner state init */
     MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
     miner_state->evbase_ = event_base_new();
-    miner_state->time = 5;
+    miner_state->time_ = 5;
     state->miner_base_ = miner_state->evbase_;
 
     bufferevent_pair_new(miner_state->evbase_, 0, main_bev_pair);
@@ -628,4 +632,23 @@ check_result(const char* msg, int res)
         cout << string(msg) << endl;
         exit(1);
     }
+}
+
+
+void MinerState::reset_mining(int new_block)
+{
+    /* Cancel timer */
+    assert(mine_ev_ != NULL);
+    assert(evtimer_pending(mine_ev_, NULL));
+    cout << "cancelling event"<<endl;
+    if (event_del(mine_ev_) != 0) {
+        cerr << "reset_mining(): event_del faield\n";
+    }
+    
+    /* Restart next */
+    cur_block_ = new_block;
+
+    struct timeval tv { time_, 0};
+    mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
+    event_add(mine_ev_, &tv);
 }
