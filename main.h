@@ -22,13 +22,13 @@ namespace xcoin {
         Server server;
         Client client;
         struct event_base * evbase_;
+        struct event_base * miner_base_;
 
         char* peer_name_;
 
         /*  Communication Sockets to Miner */
         struct bufferevent * r_bev_;
         struct bufferevent * w_bev_;
-
 
     };
 
@@ -39,6 +39,7 @@ namespace xcoin {
             struct bufferevent* w_bev_;
             struct evbuffer * w_out_;
             int time;
+            int cur_block;
     };
 
 

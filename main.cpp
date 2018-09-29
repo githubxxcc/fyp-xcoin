@@ -31,6 +31,7 @@
 
 #include <time.h>
 #include <stack>
+#include <signal.h>
 
 
 #define MY_PORT 12345
@@ -335,8 +336,10 @@ miner_on_read(struct bufferevent *bev, void *arg)
             << data 
             << endl;
     }
+    
+    /*  Cancel the mining */
 
-    event_base_loopbreak(s->evbase_);
+    /*  Update the state */
 }
 
 void 
@@ -358,6 +361,26 @@ main_on_read(struct bufferevent *bev, void *arg)
 }
 
 
+void 
+on_mine(int fd, short events, void* aux) 
+{
+    MinerState *my_state = static_cast<MinerState*>(aux);
+    cout << "Yes, new block:" << my_state->cur_block <<  endl;
+
+    stringstream ss;
+    string data;
+    cout << "buf_write_cb(): called" << endl;
+    ss << N_CLIENT_NEXT_BLOCK;
+    N_CLIENT_NEXT_BLOCK++;
+    
+    data = ss.str();
+    if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
+        cerr << "mine(): failed send to main\n";
+    }
+    
+    //FIXME
+    /* Reset the timer */
+}
 
 void *
 mine(void* aux) 
@@ -366,49 +389,59 @@ mine(void* aux)
 
     struct timespec ts;
     struct timeval tp;
-    int res;
+   // int res;
 
-    /*  Acquire the lock  */
-    pthread_mutex_lock(&MUTEX);
-    int to_mine = N_INIT_BLOCK;
-   
-    while(1) {
-        res = gettimeofday(&tp, NULL);
-        check_result("miner gettimeofday: failed\n", res);
-        ts.tv_sec = tp.tv_sec;
-        ts.tv_nsec = tp.tv_usec * 1000;
-        ts.tv_sec += my_state->time;
-        
-        res = pthread_cond_timedwait(&COND, &MUTEX, &ts);
+   // /*  Acquire the lock  */
+   // pthread_mutex_lock(&MUTEX);
+   // int to_mine = N_INIT_BLOCK;
+   //
+    //while(1) {
+    //    res = gettimeofday(&tp, NULL);
+    //    check_result("miner gettimeofday: failed\n", res);
+    //    ts.tv_sec = tp.tv_sec;
+    //    ts.tv_nsec = tp.tv_usec * 1000;
+    //    ts.tv_sec += my_state->time;
+    //    
+    //    res = pthread_cond_timedwait(&COND, &MUTEX, &ts);
 
-        if(res == ETIMEDOUT) {
-            /*  Found a block without interrupt */
-            if(MINE_BLOCKS_Q.empty()) {
-                cout << "Found new block\n";
-                /*  Informing the main */
-                N_NEXT_BLOCK = to_mine;
+    //    if(res == ETIMEDOUT) {
+    //        /*  Found a block without interrupt */
+    //        if(MINE_BLOCKS_Q.empty()) {
+    //            cout << "Found new block\n";
+    //            /*  Informing the main */
+    //            N_NEXT_BLOCK = to_mine;
 
-                /*  Mine the next one */
-                to_mine++;
-            } else {
-                /*  Another new block comes when we are done */
-                cerr << "new block but also timeout\n";
-                to_mine = MINE_BLOCKS_Q.top();
-                MINE_BLOCKS_Q.pop();
-            }
-        } else {
-            cout << "Main interrupted me\n";
-            if(!MINE_BLOCKS_Q.empty()) {
-                cout << "New block arrives\n";
-                to_mine = MINE_BLOCKS_Q.top();
-                MINE_BLOCKS_Q.pop();
-            } else {
-                cerr << "spurious wakeup. How to deal with this\n";
-            }
-        }
-    }
+    //            /*  Mine the next one */
+    //            to_mine++;
+    //        } else {
+    //            /*  Another new block comes when we are done */
+    //            cerr << "new block but also timeout\n";
+    //            to_mine = MINE_BLOCKS_Q.top();
+    //            MINE_BLOCKS_Q.pop();
+    //        }
+    //    } else {
+    //        cout << "Main interrupted me\n";
+    //        if(!MINE_BLOCKS_Q.empty()) {
+    //            cout << "New block arrives\n";
+    //            to_mine = MINE_BLOCKS_Q.top();
+    //            MINE_BLOCKS_Q.pop();
+    //        } else {
+    //            cerr << "spurious wakeup. How to deal with this\n";
+    //        }
+    //    }
+    //}
 
-    pthread_mutex_unlock(&MUTEX);
+    //pthread_mutex_unlock(&MUTEX);
+    
+
+    
+    /*  Setup MIning Event */
+    struct timeval tv = {5, 0};
+    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST , on_mine, my_state);
+        //evtimer_new(miner_state->evbase_, on_mine, miner_state);  
+    evtimer_add(mine_ev, &tv);
+    
+    event_base_dispatch(my_state->evbase_);
 
     //while(true) {
     //    future<bool> fut = async(launch::async, [](MinerState* miner_state){
@@ -468,20 +501,20 @@ init(int argc, char* argv[])
        res = start_server(state);
        check_result("init(): init server failes\n",res);
        cout << "Server Started....Looping\n";
-       int sent_block = 0;
-       while(true) {
-           /* Loop to pull events */
-           event_base_loop(state->evbase_, EVLOOP_NONBLOCK);
-            if(N_NEXT_BLOCK != -1) {
-                cout << "Mined block :" << N_NEXT_BLOCK <<endl;
-                
-                //FIXME: send to peers
-                sent_block = N_NEXT_BLOCK;
-                N_NEXT_BLOCK = -1;
-                cout << "Sending block :" << sent_block << endl;
-                cout << "Sent block :" << endl;
-            }
-       }
+       event_base_loop(state->evbase_, 0);
+
+      // while(true) {
+      //     /* Loop to pull events */
+      //      if(N_NEXT_BLOCK != -1) {
+      //          cout << "Mined block :" << N_NEXT_BLOCK <<endl;
+      //          
+      //          //FIXME: send to peers
+      //          sent_block = N_NEXT_BLOCK;
+      //          N_NEXT_BLOCK = -1;
+      //          cout << "Sending block :" << sent_block << endl;
+      //          cout << "Sent block :" << endl;
+      //      }
+      // }
    }
 
    
@@ -504,16 +537,52 @@ int main(int argc, char*argv[])
 }
 
 
+void 
+on_kill(int fd, short events, void* aux)
+{
+    XState* state = static_cast<XState*>(aux);
+    
+    struct timeval tv { 1,0};
+    cout << "Shutting down miner" << endl;
+    event_base_loopbreak(state->miner_base_);
+    event_base_loopexit(state->evbase_, &tv);
+}
+
 int
 create_miner(XState *state) 
 {
     pthread_t miner;
-   // evutil_socket_t up[2];
-   // evutil_socket_t down[2];
+    
+    /*  Comm bev, named by Read side */
+    struct bufferevent * main_bev_pair[2];  
+    struct bufferevent * miner_bev_pair[2];
 
+    /* Miner state init */
     MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
     miner_state->evbase_ = event_base_new();
     miner_state->time = 5;
+    state->miner_base_ = miner_state->evbase_;
+
+    bufferevent_pair_new(miner_state->evbase_, 0, main_bev_pair);
+    bufferevent_pair_new(state->evbase_, 0, miner_bev_pair);
+
+    miner_state->w_bev_ = main_bev_pair[0];
+    miner_state->r_bev_ = miner_bev_pair[0];
+
+    state->r_bev_ = main_bev_pair[1];
+    state->w_bev_ = miner_bev_pair[1];
+
+    bufferevent_enable(state->r_bev_, EV_READ | EV_PERSIST);
+    bufferevent_enable(miner_state->w_bev_, EV_WRITE);
+    bufferevent_enable(miner_state->r_bev_, EV_READ | EV_PERSIST);
+    bufferevent_enable(state->w_bev_, EV_WRITE);
+
+    bufferevent_setcb(state->r_bev_, main_on_read, NULL, error_cb, state);
+    bufferevent_setcb(miner_state->r_bev_, miner_on_read, NULL, error_cb, miner_state);
+
+    /*  Register SigINT */
+    struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
+    event_add(sig_ev, NULL);
 
 
     //if(evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, up) != 0) {
