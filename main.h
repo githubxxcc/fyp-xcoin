@@ -1,27 +1,33 @@
 #ifndef XCOIN_MAIN_H_
 #define XCOIN_MAIN_H_
 
+#include <arpa/inet.h>
+
 namespace xcoin {
-    typedef struct _XState XState;
-    typedef struct _Client Client;
     typedef struct _Server Server;
     class MinerState;
+    class Block;
+    class Client;
 
 
     struct _Server {
         int sd_;
     };
 
-    struct _Client {
+    class Client {
+    public:
         int sd_;
         char* server_host_name_;
         in_addr_t server_ip_;
         struct bufferevent * buf_ev_;
     };
 
-    struct _XState {
+
+    class XState {
+        public:
         Server server;
-        Client client;
+        /* Outgoing Clients */
+        Client* out_client_;
         
         /*  For incoming client instance. For callback */
         Client * in_client_;
@@ -37,6 +43,10 @@ namespace xcoin {
         struct bufferevent * r_bev_;
         struct bufferevent * w_bev_;
 
+        Client* connect_peer(char* name);
+        /* Get the incoming client */ //FIXME: how about out clients
+        Client* get_client() const;
+        void broadcast_block(int);
     };
 
     class MinerState {
@@ -51,6 +61,14 @@ namespace xcoin {
 
             void reset_mining(int);
     };
+
+
+    class Block {
+        public: 
+            int val_;
+    };
+
+    
 
 
 }
