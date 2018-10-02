@@ -35,7 +35,7 @@
 #include <signal.h>
 
 
-#define MY_PORT 12345
+#define MY_PORT 0 
 #define READ_END 0
 #define WRITE_END 0
 
@@ -49,7 +49,7 @@ using namespace xcoin;
 
 //static struct event_base *g_evbase;
 void buf_err_cb(struct bufferevent *bev, short what, void *arg);
-int create_miner(XState*);
+int create_miner(XState*, char*);
 
 static void check_result(bool, int, const char*);
 static stack<int> MINE_BLOCKS_Q;
@@ -92,7 +92,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         if(n <= 0) {
             break;
         }
-        cout << "[NETWORK] Read: " << n << " Bytes -  " << data << endl;
+        cout << "[MAIN] --- [NETWORK] Read: "  << data << "\n"  << endl;
         
         /*  Append to the stack */
         ss << data;
@@ -275,7 +275,7 @@ void on_accept(int socket, short ev, void *arg)
 }
 
 int 
-start_server(XState * state) 
+start_server(XState * state, char* time_str)
 {
     /*  Record Peer */
     //state->peer_name_ = server_host_name;
@@ -290,7 +290,7 @@ start_server(XState * state)
     struct sockaddr_in bind_address;
     bind_address.sin_family = AF_INET;
     bind_address.sin_addr.s_addr = INADDR_ANY;
-    bind_address.sin_port = htons(MY_PORT);
+    bind_address.sin_port = htons(state->my_port_);
 
     /*  bind the socket to ther server port */
     int res = bind(state->server.sd_, (struct sockaddr *) &bind_address, sizeof(bind_address));
@@ -320,7 +320,7 @@ start_server(XState * state)
     printf("Waiting for connection \n");
 
     /*  Set up mining thread */
-    create_miner(state);
+    create_miner(state, time_str);
     
     return 0;
 }
@@ -334,14 +334,14 @@ miner_on_read(struct bufferevent *bev, void *arg)
     MinerState* s = static_cast<MinerState*>(arg);
 
     for(;;) {
-        char data[128];
+        char data[128] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
         
-        cout << "[MINER-MAIN] Miner Read From Main" 
-            << n  << " Bytes : "
+        cout << "[MINER]---[MINER-MAIN] Miner Read From Main: " 
             << data 
+            << "\n"
             << endl;
 
         ss << data;
@@ -349,7 +349,7 @@ miner_on_read(struct bufferevent *bev, void *arg)
         ss.clear();
 
         /*  Cancel the mining */
-        s->reset_mining(new_block);
+        s->reset_mining(new_block + 1);
     }
     
 }
@@ -363,7 +363,6 @@ main_on_read(struct bufferevent *bev, void *arg)
 {
     char data[8192];
     size_t n;
-    cout << "Reading from main\n";
     int block;
     XState * state = static_cast<XState*>(arg);
 
@@ -372,9 +371,9 @@ main_on_read(struct bufferevent *bev, void *arg)
         if(n<=0)
             break;
         
-        cout << "[MINER-MAIN] Main Read From Miner" 
-            << n  << " Bytes : "
+        cout << "[MINER-MAIN] Main Read From Miner :" 
             << data 
+            <<"\n"
             << endl;
     
         /* Serialize data from raw bytes */
@@ -389,7 +388,7 @@ void
 on_mine(int fd, short events, void* aux) 
 {
     MinerState *my_state = static_cast<MinerState*>(aux);
-    cout << "Yes, new block:" << my_state->cur_block_ <<  endl;
+    cout << "[MINER] Yes, new block:" << my_state->cur_block_ << "\n" << endl;
 
     stringstream ss;
     string data;
@@ -414,7 +413,8 @@ mine(void* aux)
     struct timeval tp;
     
     /*  Setup MIning Event */
-    struct timeval tv = {5, 0};
+    struct timeval tv { rand() % 50 + my_state->time_, 0};
+
     struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
     evtimer_add(mine_ev, &tv);
     my_state->mine_ev_ = mine_ev;
@@ -429,18 +429,22 @@ init(int argc, char* argv[])
 {
     /*  FIXME: check input */
     int res; 
+    srand(time(NULL));
+    
+    /* Init State relevant info */
     XState* state = static_cast<XState*>(calloc(1, sizeof(XState)));
     assert(state);
     state->evbase_ = event_base_new();
+    state->my_port_ = stoi(string(argv[3]));
     
     /*  Init Server Instance */
     printf("Starting Server\n");
-    res = start_server(state);
+    res = start_server(state, argv[4]);
     check_result(res == 0, 0, "init(): init server failes\n");
     cout << "Server Started....Looping\n";
 
     /* Connect to unknown peers */
-    auto client = state->connect_peer(argv[1]);
+    auto client = state->connect_peer(argv[1], argv[2]);
     check_result(client != NULL, 1, "init(): failed to connect to client"); 
 
     event_base_loop(state->evbase_, 0);
@@ -455,6 +459,7 @@ int main(int argc, char*argv[])
     printf("Starting....\n");
     void *status;
 
+    /*  Init randome seed */
     init(argc, argv);
     
     pthread_cond_destroy(&COND);
@@ -475,7 +480,7 @@ on_kill(int fd, short events, void* aux)
 }
 
 int
-create_miner(XState *state) 
+create_miner(XState *state, char* time_str) 
 {
     pthread_t miner;
     
@@ -486,7 +491,7 @@ create_miner(XState *state)
     /* Miner state init */
     MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
     miner_state->evbase_ = event_base_new();
-    miner_state->time_ = 5;
+    miner_state->time_ = stoi(string(time_str));
     state->miner_base_ = miner_state->evbase_;
 
     bufferevent_pair_new(miner_state->evbase_, 0, main_bev_pair);
@@ -534,15 +539,17 @@ void MinerState::reset_mining(int new_block)
     /* Cancel timer */
     assert(mine_ev_ != NULL);
     assert(evtimer_pending(mine_ev_, NULL));
-    cout << "cancelling event"<<endl;
+    cout << "reset_mining():cancelling event " << new_block << "\n" <<endl;
     if (event_del(mine_ev_) != 0) {
         cerr << "reset_mining(): event_del faield\n";
     }
     
-    /* Restart next */
+    /* Restart next on next block*/
     cur_block_ = new_block;
 
-    struct timeval tv { time_, 0};
+    //struct timeval tv { time_, 0};
+    /* Random sleep time */
+    struct timeval tv { rand() % 50 + this->time_, 0};
     mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
     event_add(mine_ev_, &tv);
 }
@@ -577,7 +584,7 @@ XState::get_client() const
 }
 
 Client* 
-XState::connect_peer(char* server_host_name)
+XState::connect_peer(char* server_host_name, char* peer_port)
 {
     Client * client = static_cast<Client*>(calloc(1, sizeof(Client)));
     check_result(client != NULL,0,"connect_peer(): calloc client failed");
@@ -613,7 +620,8 @@ XState::connect_peer(char* server_host_name)
 
     listen_addr.sin_family = AF_INET;
     listen_addr.sin_addr.s_addr = client->server_ip_;
-    listen_addr.sin_port=htons(MY_PORT);
+    string port(peer_port);
+    listen_addr.sin_port=htons(stoi(port));
 
     /*  Connect to the server */
     res = connect(client->sd_, (sockaddr *) &listen_addr, sizeof(listen_addr));

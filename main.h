@@ -26,6 +26,9 @@ namespace xcoin {
     class XState {
         public:
         Server server;
+
+        int my_port_;
+
         /* Outgoing Clients */
         Client* out_client_;
         
@@ -43,7 +46,7 @@ namespace xcoin {
         struct bufferevent * r_bev_;
         struct bufferevent * w_bev_;
 
-        Client* connect_peer(char* name);
+        Client* connect_peer(char* name, char* port);
         /* Get the incoming client */ //FIXME: how about out clients
         Client* get_client() const;
         void broadcast_block(int);
