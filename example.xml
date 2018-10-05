@@ -1,4 +1,4 @@
-<shadow preload="~/.shadow/lib/libshadow-interpose.so" stoptime="500">
+<shadow preload="~/.shadow/lib/libshadow-interpose.so" stoptime="100">
     <!-- our network. the xml data here could instead be specified in a separate topology.xml file and given here as:
     <topology path="/path/to/topology.xml" />
     -->

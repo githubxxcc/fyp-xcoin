@@ -26,6 +26,8 @@
 /*  For multithreads */
 //#include <boost/thread.hpp>
 #include <boost/chrono.hpp>
+#include <boost/asio.hpp>
+
 #include <pthread.h>
 #include <future>
 #include <chrono>
@@ -56,6 +58,7 @@ static stack<int> MINE_BLOCKS_Q;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
 static int N_CLIENT_NEXT_BLOCK = 10;
+static bool G_DO_MINE = true;
 
 static pthread_cond_t COND = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t MUTEX = PTHREAD_MUTEX_INITIALIZER;
@@ -394,7 +397,12 @@ on_mine(int fd, short events, void* aux)
     string data;
     //cout << "buf_write_cb(): called" << endl;
     ss << my_state->cur_block_;
+    
+    
+
+
     my_state->cur_block_++; 
+
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
         cerr << "mine(): failed send to main\n";
@@ -412,13 +420,15 @@ mine(void* aux)
     struct timespec ts;
     struct timeval tp;
     
-    /*  Setup MIning Event */
-    struct timeval tv { rand() % 50 + my_state->time_, 0};
-
-    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
-    evtimer_add(mine_ev, &tv);
-    my_state->mine_ev_ = mine_ev;
-    event_base_dispatch(my_state->evbase_);
+    //Busy for loop on mining
+    while(G_DO_MINE) {
+        //event_base_loop(my_state->evbase_, EVLOOP_NONBLOCK);
+        sleep(1);
+        int i = 0;
+        while(i++ < 1000000000) {
+        }
+        cout << "hi" << endl; 
+    }
 
     pthread_exit(NULL);
 }
@@ -448,6 +458,9 @@ init(int argc, char* argv[])
     check_result(client != NULL, 1, "init(): failed to connect to client"); 
 
     event_base_loop(state->evbase_, 0);
+
+    /* Wait for child miner */
+    pthread_join(state->miner_, NULL);
     
     /*  TODO: check failure */
     return state;
@@ -464,7 +477,8 @@ int main(int argc, char*argv[])
     
     pthread_cond_destroy(&COND);
     pthread_mutex_destroy(&MUTEX);
-    pthread_exit(NULL);
+    //pthread_exit(NULL);
+    return 0;
 }
 
 
@@ -475,14 +489,14 @@ on_kill(int fd, short events, void* aux)
     
     //struct timeval tv { 1,0};
     cout << "Shutting down miner" << endl;
-    event_base_loopbreak(state->miner_base_);
+    //event_base_loopbreak(state->miner_base_);
+    G_DO_MINE = false;
     event_base_loopbreak(state->evbase_);
 }
 
 int
 create_miner(XState *state, char* time_str) 
 {
-    pthread_t miner;
     
     /*  Comm bev, named by Read side */
     struct bufferevent * main_bev_pair[2];  
@@ -516,7 +530,8 @@ create_miner(XState *state, char* time_str)
     struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
     event_add(sig_ev, NULL);
 
-    pthread_create(&miner, NULL, mine, (void*) miner_state);
+    pthread_create(&state->miner_, NULL, mine, (void*) miner_state);
+    
 
     return 0;
 }
