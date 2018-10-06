@@ -41,7 +41,7 @@
 
 #include "main.h"
 #include "util.h"
-
+#include "block.h"
 
 
 using namespace std;
@@ -387,7 +387,8 @@ main_on_read(struct bufferevent *bev, void *arg)
 void 
 on_mine(int fd, short events, void* aux) 
 {
-    MinerState *my_state = static_cast<MinerState*>(aux);
+    XState* state = static_cast<XState*>(aux);
+    MinerState *my_state = state->miner_state_;
     cout << "[MINER] Yes, new block:" << my_state->cur_block_ << "\n" << endl;
 
     stringstream ss;
@@ -395,6 +396,12 @@ on_mine(int fd, short events, void* aux)
     //cout << "buf_write_cb(): called" << endl;
     ss << my_state->cur_block_;
     my_state->cur_block_++; 
+    
+    //FIXME: synchronize and report nonce
+    auto prev_blk = state->chain_->get_top_block();
+    auto new_block = new Block(prev_blk, static_cast<uint32_t>(0));
+    
+    
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
         cerr << "mine(): failed send to main\n";
@@ -407,7 +414,8 @@ on_mine(int fd, short events, void* aux)
 void *
 mine(void* aux) 
 {
-    MinerState* my_state = static_cast<MinerState*>(aux);
+    XState* state = static_cast<XState*>(aux);
+    MinerState* my_state = state->miner_state_;
 
     struct timespec ts;
     struct timeval tp;
@@ -415,7 +423,7 @@ mine(void* aux)
     /*  Setup MIning Event */
     struct timeval tv { rand() % 50 + my_state->time_, 0};
 
-    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
+    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, state);
     evtimer_add(mine_ev, &tv);
     my_state->mine_ev_ = mine_ev;
     event_base_dispatch(my_state->evbase_);
@@ -436,6 +444,7 @@ init(int argc, char* argv[])
     assert(state);
     state->evbase_ = event_base_new();
     state->my_port_ = stoi(string(argv[3]));
+    state->chain_ = new Chain();
     
     /*  Init Server Instance */
     printf("Starting Server\n");
@@ -516,7 +525,7 @@ create_miner(XState *state, char* time_str)
     struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
     event_add(sig_ev, NULL);
 
-    pthread_create(&miner, NULL, mine, (void*) miner_state);
+    pthread_create(&miner, NULL, mine, (void*) state);
 
     return 0;
 }

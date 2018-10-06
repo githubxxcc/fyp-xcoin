@@ -2,11 +2,11 @@
 #define XCOIN_MAIN_H_
 
 #include <arpa/inet.h>
+#include "block.h"
 
 namespace xcoin {
     typedef struct _Server Server;
     class MinerState;
-    class Block;
     class Client;
 
 
@@ -50,6 +50,10 @@ namespace xcoin {
         /* Get the incoming client */ //FIXME: how about out clients
         Client* get_client() const;
         void broadcast_block(int);
+
+
+        /*  Blockchain related data */
+        Chain* chain_;
     };
 
     class MinerState {
@@ -65,13 +69,6 @@ namespace xcoin {
             void reset_mining(int);
     };
 
-
-    class Block {
-        public: 
-            int val_;
-    };
-
-    
 
 
 }
