@@ -22,6 +22,7 @@ namespace xcoin
             uint32_t n_bits_;
 
             string get_hash() const;
+            string to_string() const;
     };
 
 }

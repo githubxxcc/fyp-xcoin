@@ -2,6 +2,7 @@
 #define XCOIN_MAIN_H_
 
 #include <arpa/inet.h>
+#include "block.h"
 
 namespace xcoin {
     typedef struct _Server Server;
@@ -63,6 +64,9 @@ namespace xcoin {
             int cur_block_;
 
             void reset_mining(int);
+            bool has_new_block() const;
+            Block* parse_block();
+            bool find_hash(Block*, uint32_t) const;
     };
 
 

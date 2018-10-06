@@ -419,15 +419,30 @@ mine(void* aux)
 
     struct timespec ts;
     struct timeval tp;
+    int cnt = 0;
+    Block* block = NULL;
+    uint32_t nonce = 0;
+
+    /*  Get the next block */
+    
     
     //Busy for loop on mining
     while(G_DO_MINE) {
         //event_base_loop(my_state->evbase_, EVLOOP_NONBLOCK);
+        //usleep(1);
+        //FIXME: change sleep time
         sleep(1);
-        int i = 0;
-        while(i++ < 1000000000) {
+        
+        /*  Check if Main has event */
+        if(my_state->has_new_block()) {
+            block = my_state->parse_block();
+        } else {
+            if(my_state->find_hash(block, nonce++)) {
+                /*  found correct nonce */
+                Block *new_block = Block::new_from_parent(block, nonce);
+                cout << new_block->to_string() << endl;
+            } 
         }
-        cout << "hi" << endl; 
     }
 
     pthread_exit(NULL);
