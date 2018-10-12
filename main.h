@@ -51,9 +51,6 @@ namespace xcoin {
         Client* get_client() const;
         void broadcast_block(int);
 
-
-        /*  Blockchain related data */
-        Chain* chain_;
     };
 
     class MinerState {

@@ -30,6 +30,22 @@ namespace xcoin {
 
         return string(reinterpret_cast<const char*>(buf));
     }
+
+    //log_error(const char* format, ...) 
+    //{
+    //    char buffer[LOG_BUFFER_SIZE];
+    //    va_list arg_ptr;
+    //    va_start(arg_ptr, format);
+    //    int ret = vsnprintf(buffer, LOG_BUFFER_SIZE, format, arg_ptr);
+    //    va_end(arg_ptr);
+
+    //    if(ret < 0 || ret >= LOG_BUFFER_SIZE) {
+    //        buffer[limit-1] = 0;
+    //    }
+
+    //    printf("ERROR: %s\n", buffer);
+    //    return false;
+    //}
 }
 
 
