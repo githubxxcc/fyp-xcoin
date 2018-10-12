@@ -36,7 +36,6 @@ namespace xcoin {
         for(int i = 0 ; i < SHA_DIGEST_LENGTH ; i++ ) {
             ss << hex << static_cast<int>(buf[i]);
         }
-
         return ss.str();
     }
 

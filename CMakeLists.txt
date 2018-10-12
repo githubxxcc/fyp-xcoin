@@ -8,7 +8,8 @@ include("${CMAKE_SOURCE_DIR}/cmake/ShadowTools.cmake")
 
 ## create and install a shared library that can plug into shadow add_shadow_plugin(shadow-plugin-hello hello.c)
 add_shadow_plugin(shadow-plugin-xcoin main.cpp util.cpp util.h block.h block.cpp)
-target_link_libraries(shadow-plugin-xcoin)
+set(OPENSSL_LIB "/home/ricky/.shadow/lib/libssl.so")
+target_link_libraries(shadow-plugin-xcoin -levent ${OPENSSL_LIB})
 install(TARGETS shadow-plugin-xcoin DESTINATION plugins)
 
 ## create and install an executable that can run outside of shadow
