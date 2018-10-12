@@ -403,11 +403,11 @@ on_mine(int fd, short events, void* aux)
     
     //FIXME: synchronize and report nonce
     //auto prev_idxblk = state->chain_->get_top_block();
-    auto blk_idx = BlockIndex::get_best_blkidx();
-    auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
+    //auto blk_idx = BlockIndex::get_best_blkidx();
+    //auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
 
-    //Add new block 
-    new_block->accept_block();
+    ////Add new block 
+    //new_block->accept_block();
     
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
@@ -451,6 +451,10 @@ init(int argc, char* argv[])
     assert(state);
     state->evbase_ = event_base_new();
     state->my_port_ = stoi(string(argv[3]));
+
+    Block genesis = Block::genesis();
+    genesis.add_to_chain();
+    cout << "Genesis Block Hash: " << genesis.get_hash() << endl;
     
     /*  Init Server Instance */
     printf("Starting Server\n");

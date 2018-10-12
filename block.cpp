@@ -36,8 +36,8 @@ namespace xcoin
     Block::get_hash() const 
     {
         stringstream ss;
-        ss << index_ 
-            << prev_hash_
+        ss << prev_hash_
+            << index_
             << nbit_
             << nonce_;
         auto temp = ss.str();
@@ -128,6 +128,12 @@ namespace xcoin
     }
 
 
+    Block Block::genesis() 
+    {
+        Block genesis;
+        return genesis;
+    }
+
     /* ****************************
      * BlockIndex
      * */
@@ -137,4 +143,6 @@ namespace xcoin
     {
         return g_best_index;
     }
+
+
 }

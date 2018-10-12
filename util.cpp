@@ -2,6 +2,9 @@
 #include "util.h"
 
 #include <openssl/sha.h>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 using namespace std;
 
 namespace xcoin {
@@ -24,11 +27,17 @@ namespace xcoin {
 
     string sha1(string &s) 
     {
-        unsigned char buf[SHA_DIGEST_LENGTH];
+        stringstream ss;
+        unsigned char buf[SHA_DIGEST_LENGTH] = {0};
         SHA1(reinterpret_cast<const unsigned char*>(s.c_str()), 
                 s.length(), buf);
 
-        return string(reinterpret_cast<const char*>(buf));
+        //Convert to HEX
+        for(int i = 0 ; i < SHA_DIGEST_LENGTH ; i++ ) {
+            ss << hex << static_cast<int>(buf[i]);
+        }
+
+        return ss.str();
     }
 
     //log_error(const char* format, ...) 

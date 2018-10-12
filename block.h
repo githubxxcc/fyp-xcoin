@@ -23,6 +23,10 @@ namespace xcoin
             uint32_t nonce_;
 
             //string data_;
+            
+            Block() {
+                set_null();
+            }
 
             Block(uint32_t index, string& prev_hash, uint32_t nbit):
                 index_(index),
@@ -47,10 +51,18 @@ namespace xcoin
 
             Block(BlockIndex* blk, uint32_t);
 
+            void set_null() {
+                index_ = 0;
+                prev_hash_= string("NULL");
+                nbit_ = 5;
+                nonce_ = 0;
+            }
+
             string get_hash() const;
             bool check_block() const;
             bool accept_block();
             bool add_to_chain();
+            static Block genesis();
 
             friend ostream& operator<<(ostream &strm, const Block&);
     };
