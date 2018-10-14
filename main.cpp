@@ -323,8 +323,6 @@ start_server(XState * state, char* time_str)
     /*  Running  */
     printf("Waiting for connection \n");
 
-    /*  Set up mining thread */
-    create_miner(state, time_str);
     
     return 0;
 }
@@ -402,12 +400,12 @@ on_mine(int fd, short events, void* aux)
     my_state->cur_block_++; 
     
     //FIXME: synchronize and report nonce
-    //auto prev_idxblk = state->chain_->get_top_block();
-    //auto blk_idx = BlockIndex::get_best_blkidx();
-    //auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
+    auto blk_idx = BlockIndex::get_best_blkidx();
+    auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
 
-    ////Add new block 
-    //new_block->accept_block();
+    //Add new block 
+    new_block->accept_block();
+    debug_chains();
     
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
@@ -423,18 +421,19 @@ mine(void* aux)
 {
     XState* state = static_cast<XState*>(aux);
     MinerState* my_state = state->miner_state_;
-
+    printf("Miner running\n");    
     struct timespec ts;
     struct timeval tp;
     
     /*  Setup MIning Event */
-    struct timeval tv { rand() % 50 + my_state->time_, 0};
+    struct timeval tv { 5, 0};
 
     struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, state);
     evtimer_add(mine_ev, &tv);
     my_state->mine_ev_ = mine_ev;
     event_base_dispatch(my_state->evbase_);
-
+    
+    cout << " miner exiting\n" ;
     pthread_exit(NULL);
 }
 
@@ -451,10 +450,7 @@ init(int argc, char* argv[])
     assert(state);
     state->evbase_ = event_base_new();
     state->my_port_ = stoi(string(argv[3]));
-
-    Block genesis = Block::genesis();
-    genesis.add_to_chain();
-    cout << "Genesis Block Hash: " << genesis.get_hash() << endl;
+    
     
     /*  Init Server Instance */
     printf("Starting Server\n");
@@ -463,11 +459,20 @@ init(int argc, char* argv[])
     cout << "Server Started....Looping\n";
 
     /* Connect to unknown peers */
-    auto client = state->connect_peer(argv[1], argv[2]);
-    check_result(client != NULL, 1, "init(): failed to connect to client"); 
+    //auto client = state->connect_peer(argv[1], argv[2]);
+    //check_result(client != NULL, 1, "init(): failed to connect to client"); 
+    //printf("Connected peer\n");
 
-    event_base_loop(state->evbase_, 0);
-    
+    /*  Set up mining thread */
+    create_miner(state, argv[4]);
+
+    /* Set up the chain genesis block */
+    Block genesis = Block::genesis();
+    genesis.add_to_chain();
+    cout << "Genesis Block Hash: " << genesis.get_hash() << "\n";
+
+    debug_chains();
+
     /*  TODO: check failure */
     return state;
 }
@@ -476,11 +481,12 @@ init(int argc, char* argv[])
 int main(int argc, char*argv[])
 {
     printf("Starting....\n");
-    void *status;
-
     /*  Init randome seed */
-    init(argc, argv);
+    auto state = init(argc, argv);
     
+    event_base_dispatch(state->evbase_);
+
+    pthread_join(state->miner_, NULL);
     pthread_cond_destroy(&COND);
     pthread_mutex_destroy(&MUTEX);
     pthread_exit(NULL);
@@ -501,7 +507,6 @@ on_kill(int fd, short events, void* aux)
 int
 create_miner(XState *state, char* time_str) 
 {
-    pthread_t miner;
     
     /*  Comm bev, named by Read side */
     struct bufferevent * main_bev_pair[2];  
@@ -535,8 +540,8 @@ create_miner(XState *state, char* time_str)
     struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
     event_add(sig_ev, NULL);
 
-    pthread_create(&miner, NULL, mine, (void*) state);
-
+    pthread_create(&state->miner_, NULL, mine, (void*) state);
+    printf("Created miner\n");
     return 0;
 }
 
@@ -568,9 +573,9 @@ void MinerState::reset_mining(int new_block)
 
     //struct timeval tv { time_, 0};
     /* Random sleep time */
-    struct timeval tv { rand() % 50 + this->time_, 0};
-    mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
-    event_add(mine_ev_, &tv);
+   // struct timeval tv { rand() % 50 + this->time_, 0};
+   // mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
+   // event_add(mine_ev_, &tv);
 }
 
 void XState::broadcast_block(int new_block) 

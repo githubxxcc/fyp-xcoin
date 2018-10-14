@@ -3,6 +3,7 @@
 
 
 #include <string>
+#include <sstream>
 #include <ostream>
 #include <vector>
 
@@ -35,12 +36,12 @@ namespace xcoin
                     this->nonce_ = 0;
                 }
 
-            Block(uint32_t index, uint32_t nbit):
-                index_(index),
-                nbit_(nbit) {
-                    this->nonce_ = 0;
-                    this->prev_hash_ = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
-                }
+            //Block(uint32_t index, uint32_t nbit):
+            //    index_(index),
+            //    nbit_(nbit) {
+            //        this->nonce_ = 0;
+            //        this->prev_hash_ = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+            //    }
 
             Block(Block& par, uint32_t nonce) :nonce_(nonce) {
                 /* Copy info from the parent */
@@ -105,8 +106,18 @@ namespace xcoin
                 hash_ = block.get_hash();
             }
 
+            string to_string() const {
+                stringstream ss;
+                ss  << "n_height : " << n_height_ << "| " 
+                    <<  "hash : " << hash_ << " | ";
+                return ss.str();
+            }
+
             static BlockIndex* get_best_blkidx() ;
     };
+
+
+    void debug_chains();
 
    // class Chain {
    //     public:

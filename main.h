@@ -37,6 +37,7 @@ namespace xcoin {
         struct event_base * evbase_;
 
         /*  Miner state */
+        pthread_t miner_;
         struct event_base * miner_base_;
         MinerState * miner_state_;
 

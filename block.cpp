@@ -14,7 +14,7 @@ namespace xcoin
      * GLobal State
      * */
     unordered_map<string, BlockIndex*> g_block_index;
-    const string g_genesis_hash("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+    const string g_genesis_hash("e9d9579737f7e206617cd903ce42d986d5a2f");
     BlockIndex* g_genesis_indexblk = NULL;
     int g_best_height = -1;
     string g_best_chain_hash = string("DEADBEEF");
@@ -143,6 +143,29 @@ namespace xcoin
     {
         return g_best_index;
     }
+    
 
+    /*  ************************
+     *  Utility methods
+     * */
+
+    void
+    debug_chains() 
+    {
+        // Print heigh
+        cout << "------- Cur Height ------\n";
+        cout << g_best_height << "\n";
+
+
+        // Print best chain 
+        assert(g_best_index != NULL);
+        cout << "------- Best Chain ------\n";
+        BlockIndex* tmp_blk = g_best_index;
+        while(tmp_blk != NULL) {
+            cout << tmp_blk->to_string() << "\n";
+            cout << "+\n";
+            tmp_blk = tmp_blk->pprev_;
+        }
+    }
 
 }
