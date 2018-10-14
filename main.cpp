@@ -391,6 +391,9 @@ on_mine(int fd, short events, void* aux)
 {
     XState* state = static_cast<XState*>(aux);
     MinerState *my_state = state->miner_state_;
+    
+    //cout << "hillo on_mine" << endl;
+    //MinerState * my_state = static_cast<MinerState*>(aux);
     cout << "[MINER] Yes, new block:" << my_state->cur_block_ << "\n" << endl;
 
     stringstream ss;
@@ -400,12 +403,12 @@ on_mine(int fd, short events, void* aux)
     my_state->cur_block_++; 
     
     //FIXME: synchronize and report nonce
-    auto blk_idx = BlockIndex::get_best_blkidx();
-    auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
+   // auto blk_idx = BlockIndex::get_best_blkidx();
+   // auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
 
-    //Add new block 
-    new_block->accept_block();
-    debug_chains();
+   // //Add new block 
+   // new_block->accept_block();
+   // debug_chains();
     
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
@@ -421,6 +424,7 @@ mine(void* aux)
 {
     XState* state = static_cast<XState*>(aux);
     MinerState* my_state = state->miner_state_;
+
     printf("Miner running\n");    
     struct timespec ts;
     struct timeval tp;
@@ -517,6 +521,7 @@ create_miner(XState *state, char* time_str)
     miner_state->evbase_ = event_base_new();
     miner_state->time_ = stoi(string(time_str));
     state->miner_base_ = miner_state->evbase_;
+    state->miner_state_ = miner_state;
 
     bufferevent_pair_new(miner_state->evbase_, 0, main_bev_pair);
     bufferevent_pair_new(state->evbase_, 0, miner_bev_pair);
