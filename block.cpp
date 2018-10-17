@@ -60,7 +60,7 @@ namespace xcoin
             return false;
         }
 
-        auto itr = g_block_index.find(hash);
+        auto itr = g_block_index.find(this->prev_hash_);
         assert(itr != g_block_index.end());
 
         BlockIndex* index_prev = (*itr).second;

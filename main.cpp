@@ -403,12 +403,13 @@ on_mine(int fd, short events, void* aux)
     my_state->cur_block_++; 
     
     //FIXME: synchronize and report nonce
-   // auto blk_idx = BlockIndex::get_best_blkidx();
-   // auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
+    auto blk_idx = BlockIndex::get_best_blkidx();
+    assert(blk_idx != NULL);
+    auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
 
-   // //Add new block 
-   // new_block->accept_block();
-   // debug_chains();
+    //Add new block 
+    new_block->accept_block();
+    //debug_chains();
     
     data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
