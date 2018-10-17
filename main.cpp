@@ -389,8 +389,8 @@ main_on_read(struct bufferevent *bev, void *arg)
 void 
 on_mine(int fd, short events, void* aux) 
 {
-    XState* state = static_cast<XState*>(aux);
-    MinerState *my_state = state->miner_state_;
+    //XState* state = static_cast<XState*>(aux);
+    MinerState *my_state = static_cast<MinerState*>(aux);
     
     //cout << "hillo on_mine" << endl;
     //MinerState * my_state = static_cast<MinerState*>(aux);
@@ -433,10 +433,12 @@ mine(void* aux)
     /*  Setup MIning Event */
     struct timeval tv { 5, 0};
 
-    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, state);
+    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
     evtimer_add(mine_ev, &tv);
     my_state->mine_ev_ = mine_ev;
-    event_base_dispatch(my_state->evbase_);
+
+    /* Loop until the main thread breaks the evloop */
+    event_base_loop(my_state->evbase_, 0);
     
     cout << " miner exiting\n" ;
     pthread_exit(NULL);
@@ -464,9 +466,9 @@ init(int argc, char* argv[])
     cout << "Server Started....Looping\n";
 
     /* Connect to unknown peers */
-    //auto client = state->connect_peer(argv[1], argv[2]);
-    //check_result(client != NULL, 1, "init(): failed to connect to client"); 
-    //printf("Connected peer\n");
+   auto client = state->connect_peer(argv[1], argv[2]);
+   check_result(client != NULL, 1, "init(): failed to connect to client"); 
+   printf("Connected peer\n");
 
     /*  Set up mining thread */
     create_miner(state, argv[4]);
@@ -577,11 +579,10 @@ void MinerState::reset_mining(int new_block)
     /* Restart next on next block*/
     cur_block_ = new_block;
 
-    //struct timeval tv { time_, 0};
     /* Random sleep time */
-   // struct timeval tv { rand() % 50 + this->time_, 0};
-   // mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
-   // event_add(mine_ev_, &tv);
+    struct timeval tv { rand() % 50 + this->time_, 0};
+    mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
+    event_add(mine_ev_, &tv);
 }
 
 void XState::broadcast_block(int new_block) 

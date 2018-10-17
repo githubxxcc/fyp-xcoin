@@ -42,7 +42,7 @@
     <!-- our nodes and the applications they run -->
 
     <host id="peer1" geocodehint="US">
-        <process plugin="xcoin" starttime="20" arguments="peer2 50001 50002 20 "/>
+        <process plugin="xcoin" starttime="1" arguments="peer2 50001 50002 20 "/>
     </host>
     <host id="peer2">
         <process plugin="xcoin" starttime="1" arguments="peer1 50002 50001 10" />
