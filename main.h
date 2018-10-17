@@ -50,7 +50,7 @@ namespace xcoin {
         Client* connect_peer(char* name, char* port);
         /* Get the incoming client */ //FIXME: how about out clients
         Client* get_client() const;
-        void broadcast_block(int);
+        void broadcast_block(string);
 
     };
 

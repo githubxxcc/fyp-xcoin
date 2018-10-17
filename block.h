@@ -7,6 +7,10 @@
 #include <ostream>
 #include <vector>
 
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
+
 using namespace std;
 namespace xcoin
 {
@@ -36,13 +40,6 @@ namespace xcoin
                     this->nonce_ = 0;
                 }
 
-            //Block(uint32_t index, uint32_t nbit):
-            //    index_(index),
-            //    nbit_(nbit) {
-            //        this->nonce_ = 0;
-            //        this->prev_hash_ = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
-            //    }
-
             Block(Block& par, uint32_t nonce) :nonce_(nonce) {
                 /* Copy info from the parent */
                 index_ = par.index_+1;
@@ -59,6 +56,20 @@ namespace xcoin
                 nonce_ = 0;
             }
 
+            string serialize() {
+                stringstream ss;
+                boost::archive::text_oarchive oa{ss};
+                oa  << *this;
+                return ss.str();
+            }
+
+            static Block deserialize(stringstream &ss) {
+                Block block;
+                boost::archive::text_iarchive ia{ss};
+                ia >> block;
+                return block;
+            }
+
             string get_hash() const;
             bool check_block() const;
             bool accept_block();
@@ -66,6 +77,17 @@ namespace xcoin
             static Block genesis();
 
             friend ostream& operator<<(ostream &strm, const Block&);
+
+            friend class boost::serialization::access;
+            template<class Archive>
+            void serialize(Archive & ar, const unsigned int version) 
+            {
+                ar  & index_
+                    & prev_hash_
+                    & nbit_
+                    & nonce_;
+            }
+
     };
 
     class BlockIndex {
