@@ -3,6 +3,7 @@
 #include "util.h"
 
 #include <unordered_map>
+#include <map>
 #include <iostream>
 #include <assert.h>
 
@@ -14,17 +15,21 @@ namespace xcoin
      * GLobal State
      * */
     unordered_map<string, BlockIndex*> g_block_index;
+    multimap<string, Block*> g_orphan_blocks;
+    multimap<string, Block*> g_orphan_prev_blocks;
+
     const string g_genesis_hash("e9d9579737f7e206617cd903ce42d986d5a2f");
     BlockIndex* g_genesis_indexblk = NULL;
     int g_best_height = -1;
     string g_best_chain_hash = string("DEADBEEF");
     BlockIndex* g_best_index = NULL;
     
-
+    
+    static void connect_orphans(string&);
     /* ************************ 
      * Block
      *  */
-    Block::Block(BlockIndex* blk_idx, uint32_t nonce) : nonce_(nonce) 
+    Block::Block(BlockIndex* blk_idx, int nonce) : nonce_(nonce) 
     {
         index_ = blk_idx->n_height_ + 1;
         prev_hash_ = blk_idx->hash_;
@@ -134,6 +139,80 @@ namespace xcoin
         return genesis;
     }
 
+    bool Block::process_block() 
+    {
+        string hash = this->get_hash();
+
+        /*  Check for duplicates */
+        if(g_block_index.count(hash)) {
+            cerr << "process_block(): already have block " << hash <<"\n" << endl;     
+            return false;
+        }
+        if(g_orphan_blocks.count(hash)) {
+            cerr << "process_block(): orphan block \n"<< endl;
+            return false;
+        }
+
+        /*  General Check on the block */
+        if(!this->check_block()) {
+            cerr << "process_block(): check block failed \n"<<endl;
+            return false;
+        }
+
+        /*  If previous block not present => it's an orphan */
+        if(!g_block_index.count(this->prev_hash_)) {
+            g_orphan_blocks.insert(make_pair(hash, this));
+            
+            //FIXME: what does the prev_blocks do?
+            g_orphan_prev_blocks.insert(make_pair(this->prev_hash_, this));
+            
+            //FIXME: ask for the missing blocks?
+            return true;
+        }
+
+        if(!this->accept_block()) {
+            cerr << "process_block(): accept_block failed\n" << endl;
+            return false;
+        }
+    
+        /*  Recursively add orphans that depend on this block */
+        connect_orphans(hash);
+        return true;
+    }
+
+
+    static void
+    connect_orphans(string& hash) 
+    {
+       vector<string> work_q;
+       work_q.push_back(hash);
+
+       for (int i = 0; i<work_q.size(); i++) {
+            string prev_hash = work_q[i];
+
+            for(auto itr = g_orphan_prev_blocks.lower_bound(prev_hash);
+                    itr != g_orphan_prev_blocks.upper_bound(prev_hash);
+                    itr++) {
+                Block* orphan_blk = (*itr).second;
+
+                /*  Orphan now finds a parent */
+                if(orphan_blk->accept_block()) {
+                    /*  Some other orphans might depend on it */
+                    work_q.push_back(orphan_blk->get_hash());
+                }
+
+                /*  Delete the orphan even if it is not deleted */
+                g_orphan_blocks.erase(orphan_blk->get_hash());
+
+                //FIXME: delete orphan block? 
+                //delete orphan_block;
+            }
+
+            g_orphan_prev_blocks.erase(prev_hash);
+       }
+
+    }
+
     /* ****************************
      * BlockIndex
      * */
@@ -167,5 +246,6 @@ namespace xcoin
             tmp_blk = tmp_blk->pprev_;
         }
     }
+
 
 }

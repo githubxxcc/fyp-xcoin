@@ -25,7 +25,7 @@ namespace xcoin
             uint32_t index_;
             string prev_hash_;
             uint32_t nbit_;
-            uint32_t nonce_;
+            int nonce_;
 
             //string data_;
             
@@ -40,14 +40,14 @@ namespace xcoin
                     this->nonce_ = 0;
                 }
 
-            Block(Block& par, uint32_t nonce) :nonce_(nonce) {
+            Block(Block& par, int nonce) :nonce_(nonce) {
                 /* Copy info from the parent */
                 index_ = par.index_+1;
                 prev_hash_ = par.get_hash();
                 nbit_ = par.nbit_;
             }
 
-            Block(BlockIndex* blk, uint32_t);
+            Block(BlockIndex* blk, int);
 
             void set_null() {
                 index_ = 0;
@@ -57,6 +57,7 @@ namespace xcoin
             }
 
             string serialize() {
+                assert(nonce_ < 100);
                 stringstream ss;
                 boost::archive::text_oarchive oa{ss};
                 oa  << *this;
@@ -74,6 +75,7 @@ namespace xcoin
             bool check_block() const;
             bool accept_block();
             bool add_to_chain();
+            bool process_block();
             static Block genesis();
 
             friend ostream& operator<<(ostream &strm, const Block&);
@@ -82,10 +84,10 @@ namespace xcoin
             template<class Archive>
             void serialize(Archive & ar, const unsigned int version) 
             {
-                ar  & index_
-                    & prev_hash_
-                    & nbit_
-                    & nonce_;
+                ar  & index_;
+                ar  & prev_hash_;
+                ar  & nbit_;
+                ar  & nonce_;
             }
 
     };
@@ -100,7 +102,7 @@ namespace xcoin
 
             /*  Block Header Data  */ //Why needed?
             uint32_t nbit_;
-            uint32_t nonce_;
+            int nonce_;
             string  hash_;
 
             //BlockIndex() 

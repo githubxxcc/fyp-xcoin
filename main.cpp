@@ -87,11 +87,11 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
 {
     cout << "Reading...\n" <<endl;
     XState* state = static_cast<XState*>(arg);
-    char data[8192];
     size_t n;
     stringstream ss;
 
     for(;;) {
+        char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
         if(n <= 0) {
             break;
@@ -103,7 +103,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         string blk_str = ss.str();
         ss.clear();
 
-        /*  Pass next miner block */
+        /*  Pass next miner block, call miner_on_read */
         if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
             cerr << "buf_read_cb() : failed writing" <<endl;
         }
@@ -290,6 +290,15 @@ miner_on_read(struct bufferevent *bev, void *arg)
             << "\n"
             << endl;
 
+        if(block.process_block()) {
+            /*  Reset the mining */
+            cout << "miner_on_read(): prcess_blocked ok\n";
+            //s->reset_mining();
+        } else {
+            /*  FIXME: What to do  */
+            cout << "miner_on_read(): process_block fails\n";
+        }
+
         /*  Cancel the mining */
         //s->reset_mining(new_block + 1);
     }
@@ -303,13 +312,14 @@ miner_on_read(struct bufferevent *bev, void *arg)
 void 
 main_on_read(struct bufferevent *bev, void *arg) 
 {
-    char data[8192];
     size_t n;
     int block;
     XState * state = static_cast<XState*>(arg);
 
     for(;;) {
+        char data[8192] = {0};
         stringstream ss;
+        ss.clear();
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
@@ -338,7 +348,9 @@ on_mine(int fd, short events, void* aux)
     /*  Create new block */
     auto blk_idx = BlockIndex::get_best_blkidx();
     assert(blk_idx != NULL);
-    auto new_block = new Block(blk_idx, static_cast<uint32_t>(0));
+    int nonce = rand() % 100;
+    cout << "on_mine() : new nonce " << nonce << "\n";
+    auto new_block = new Block(blk_idx,nonce);
     
     /*  Add new block */
     new_block->accept_block();
@@ -347,6 +359,7 @@ on_mine(int fd, short events, void* aux)
     
     /*  Serialize the block for sending */
     data = new_block->serialize();
+    cout << "SENDING: " << data << "\n";
 
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
         cerr << "mine(): failed send to main\n";
