@@ -34,6 +34,8 @@
 #include <stack>
 #include <signal.h>
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #define MY_PORT 0 
 #define READ_END 0
@@ -433,10 +435,14 @@ init(int argc, char* argv[])
 
 int main(int argc, char*argv[])
 {
-    printf("Starting....\n");
+    /*  Settup Logger */
+    auto console = spdlog::stdout_color_mt("console");
+    auto err_log = spdlog::stderr_color_mt("stderr");
+    
+    console->info("Starting");
     /*  Init randome seed */
     auto state = init(argc, argv);
-    
+
     event_base_dispatch(state->evbase_);
 
     pthread_join(state->miner_, NULL);
