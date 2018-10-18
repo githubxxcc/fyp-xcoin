@@ -36,6 +36,8 @@
 #include <stack>
 #include <signal.h>
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #define MY_PORT 0 
 #define READ_END 0
@@ -43,7 +45,7 @@
 
 #include "main.h"
 #include "util.h"
-
+#include "block.h"
 
 
 using namespace std;
@@ -62,6 +64,10 @@ static bool G_DO_MINE = true;
 
 static pthread_cond_t COND = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t MUTEX = PTHREAD_MUTEX_INITIALIZER;
+
+
+//extern BlockIndex* g_best_index;
+
 
 
 
@@ -86,11 +92,11 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
 {
     cout << "Reading...\n" <<endl;
     XState* state = static_cast<XState*>(arg);
-    char data[8192];
     size_t n;
     stringstream ss;
 
     for(;;) {
+        char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
         if(n <= 0) {
             break;
@@ -102,7 +108,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         string blk_str = ss.str();
         ss.clear();
 
-        /*  Pass next miner block */
+        /*  Pass next miner block, call miner_on_read */
         if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
             cerr << "buf_read_cb() : failed writing" <<endl;
         }
@@ -131,66 +137,6 @@ void buf_event_cb(struct bufferevent *bev, short events, void *ptr)
     }
 }
 
-//int
-//start_client(XState* state, char* server_host_name)
-//{
-//
-//    state->client.server_host_name_ = strndup(server_host_name, (size_t) 50);
-//    printf("server_host_name: %s\n", state->client.server_host_name_);
-//    /*  get address */ 
-//    struct addrinfo* server_info;
-//    int res = getaddrinfo(state->client.server_host_name_, NULL, NULL, &server_info);
-//    if(res == -1) {
-//        //error
-//        printf("err in address\n");
-//        exit(1);
-//    }
-//    state->client.server_ip_ = ((struct sockaddr_in*) (server_info->ai_addr))->sin_addr.s_addr;
-//
-//    char str[INET_ADDRSTRLEN];
-//    inet_ntop(AF_INET, &(state->client.server_ip_), str, INET_ADDRSTRLEN);
-//    printf("server ip: %s\n", str);
-//
-//    freeaddrinfo(server_info);
-//
-//    state->client.sd_ = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
-//    if (state->client.sd_ == -1) {
-//        //error
-//        printf("start_client: unable to open socket\n");
-//        return -1;
-//    }
-//
-//    /*  client socket address info */
-//    sockaddr_in listen_addr;
-//    memset(&listen_addr, 0, sizeof(listen_addr));
-//
-//    listen_addr.sin_family = AF_INET;
-//    listen_addr.sin_addr.s_addr = state->client.server_ip_;
-//    listen_addr.sin_port=htons(MY_PORT);
-//
-//    /*  Connect to the server */
-//    res = connect(state->client.sd_, (sockaddr *) &listen_addr, sizeof(listen_addr));
-//    if (res == -1 && errno != EINPROGRESS) {
-//        printf("start_client: failed to connect socket\n");
-//        return -1;
-//    }
-//
-//    struct event *ev_read;
-//    struct event *ev_write;
-//    struct timeval tv = {5, 0};
-//    
-//
-//    state->client.buf_ev_ = bufferevent_socket_new(state->evbase_, state->client.sd_, 0);
-//    bufferevent_enable(state->client.buf_ev_,  EV_WRITE);
-//    //bufferevent_setcb(state->client.buf_ev_, NULL, buf_write_cb, buf_event_cb, NULL);
-//    //event_add(ev_read, NULL); /*  No echoing back yet */
-//    ev_write= event_new(state->evbase_, state->client.sd_, EV_WRITE, buf_write_cb, state->client.buf_ev_); /* Write once */
-//
-//    event_add(ev_write, &tv); 
-//    event_base_dispatch(state->evbase_);
-//
-//    return 0;
-//}
 
 /* *
  *  * Set a socket to non-blocking mode.
@@ -322,8 +268,6 @@ start_server(XState * state, char* time_str)
     /*  Running  */
     printf("Waiting for connection \n");
 
-    /*  Set up mining thread */
-    create_miner(state, time_str);
     
     return 0;
 }
@@ -333,7 +277,6 @@ miner_on_read(struct bufferevent *bev, void *arg)
 {
     size_t n;
     stringstream ss;
-    int new_block;
     MinerState* s = static_cast<MinerState*>(arg);
 
     for(;;) {
@@ -342,17 +285,27 @@ miner_on_read(struct bufferevent *bev, void *arg)
         if(n<=0)
             break;
         
+
+        ss << data;
+        auto block = Block::deserialize(ss);
+        ss.clear();
+
         cout << "[MINER]---[MINER-MAIN] Miner Read From Main: " 
-            << data 
+            << block
             << "\n"
             << endl;
 
-        ss << data;
-        ss >> new_block;
-        ss.clear();
+        if(block.process_block()) {
+            /*  Reset the mining */
+            cout << "miner_on_read(): prcess_blocked ok\n";
+            //s->reset_mining();
+        } else {
+            /*  FIXME: What to do  */
+            cout << "miner_on_read(): process_block fails\n";
+        }
 
         /*  Cancel the mining */
-        s->reset_mining(new_block + 1);
+        //s->reset_mining(new_block + 1);
     }
     
 }
@@ -364,12 +317,14 @@ miner_on_read(struct bufferevent *bev, void *arg)
 void 
 main_on_read(struct bufferevent *bev, void *arg) 
 {
-    char data[8192];
     size_t n;
     int block;
     XState * state = static_cast<XState*>(arg);
 
     for(;;) {
+        char data[8192] = {0};
+        stringstream ss;
+        ss.clear();
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
@@ -379,10 +334,10 @@ main_on_read(struct bufferevent *bev, void *arg)
             <<"\n"
             << endl;
     
-        /* Serialize data from raw bytes */
-        block = util_get_block(data, n); //FIXME: free mem
-        
-        state->broadcast_block(block);
+            
+        /*  Broadcast to peers */
+        ss << data;
+        state->broadcast_block(ss.str());
     }
 }
 
@@ -390,61 +345,53 @@ main_on_read(struct bufferevent *bev, void *arg)
 void 
 on_mine(int fd, short events, void* aux) 
 {
+    //XState* state = static_cast<XState*>(aux);
     MinerState *my_state = static_cast<MinerState*>(aux);
-    cout << "[MINER] Yes, new block:" << my_state->cur_block_ << "\n" << endl;
-
-    stringstream ss;
     string data;
-    //cout << "buf_write_cb(): called" << endl;
-    ss << my_state->cur_block_;
     
+    //FIXME: synchronize and report nonce
+    /*  Create new block */
+    auto blk_idx = BlockIndex::get_best_blkidx();
+    assert(blk_idx != NULL);
+    int nonce = rand() % 100;
+    cout << "on_mine() : new nonce " << nonce << "\n";
+    auto new_block = new Block(blk_idx,nonce);
     
+    /*  Add new block */
+    new_block->accept_block();
+    //debug_chains();
+    cout << "[MINER] [on_mine]:" << new_block << "\n" << endl;
+    
+    /*  Serialize the block for sending */
+    data = new_block->serialize();
+    cout << "SENDING: " << data << "\n";
 
-
-    my_state->cur_block_++; 
-
-    data = ss.str();
     if(bufferevent_write(my_state->w_bev_, data.c_str(), data.size()) != 0) {
         cerr << "mine(): failed send to main\n";
     }
-    
-    //FIXME
-    /* Reset the timer */
 }
 
 void *
 mine(void* aux) 
 {
-    MinerState* my_state = static_cast<MinerState*>(aux);
+    XState* state = static_cast<XState*>(aux);
+    MinerState* my_state = state->miner_state_;
 
+    printf("Miner running\n");    
     struct timespec ts;
     struct timeval tp;
-    int cnt = 0;
-    Block* block = NULL;
-    uint32_t nonce = 0;
-
-    /*  Get the next block */
     
-    
-    //Busy for loop on mining
-    while(G_DO_MINE) {
-        //event_base_loop(my_state->evbase_, EVLOOP_NONBLOCK);
-        //usleep(1);
-        //FIXME: change sleep time
-        sleep(1);
-        
-        /*  Check if Main has event */
-        if(my_state->has_new_block()) {
-            block = my_state->parse_block();
-        } else {
-            if(my_state->find_hash(block, nonce++)) {
-                /*  found correct nonce */
-                Block *new_block = Block::new_from_parent(block, nonce);
-                cout << new_block->to_string() << endl;
-            } 
-        }
-    }
+    /*  Setup MIning Event */
+    struct timeval tv { 5, 0};
 
+    struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
+    evtimer_add(mine_ev, &tv);
+    my_state->mine_ev_ = mine_ev;
+
+    /* Loop until the main thread breaks the evloop */
+    event_base_loop(my_state->evbase_, 0);
+    
+    cout << " miner exiting\n" ;
     pthread_exit(NULL);
 }
 
@@ -462,6 +409,7 @@ init(int argc, char* argv[])
     state->evbase_ = event_base_new();
     state->my_port_ = stoi(string(argv[3]));
     
+    
     /*  Init Server Instance */
     printf("Starting Server\n");
     res = start_server(state, argv[4]);
@@ -469,14 +417,20 @@ init(int argc, char* argv[])
     cout << "Server Started....Looping\n";
 
     /* Connect to unknown peers */
-    auto client = state->connect_peer(argv[1], argv[2]);
-    check_result(client != NULL, 1, "init(): failed to connect to client"); 
+   auto client = state->connect_peer(argv[1], argv[2]);
+   check_result(client != NULL, 1, "init(): failed to connect to client"); 
+   printf("Connected peer\n");
 
-    event_base_loop(state->evbase_, 0);
+    /*  Set up mining thread */
+    create_miner(state, argv[4]);
 
-    /* Wait for child miner */
-    pthread_join(state->miner_, NULL);
-    
+    /* Set up the chain genesis block */
+    Block genesis = Block::genesis();
+    genesis.add_to_chain();
+    cout << "Genesis Block Hash: " << genesis.get_hash() << "\n";
+
+    debug_chains();
+
     /*  TODO: check failure */
     return state;
 }
@@ -484,12 +438,17 @@ init(int argc, char* argv[])
 
 int main(int argc, char*argv[])
 {
-    printf("Starting....\n");
-    void *status;
-
-    /*  Init randome seed */
-    init(argc, argv);
+    /*  Settup Logger */
+    auto console = spdlog::stdout_color_mt("console");
+    auto err_log = spdlog::stderr_color_mt("stderr");
     
+    console->info("Starting");
+    /*  Init randome seed */
+    auto state = init(argc, argv);
+
+    event_base_dispatch(state->evbase_);
+
+    pthread_join(state->miner_, NULL);
     pthread_cond_destroy(&COND);
     pthread_mutex_destroy(&MUTEX);
     //pthread_exit(NULL);
@@ -522,6 +481,7 @@ create_miner(XState *state, char* time_str)
     miner_state->evbase_ = event_base_new();
     miner_state->time_ = stoi(string(time_str));
     state->miner_base_ = miner_state->evbase_;
+    state->miner_state_ = miner_state;
 
     bufferevent_pair_new(miner_state->evbase_, 0, main_bev_pair);
     bufferevent_pair_new(state->evbase_, 0, miner_bev_pair);
@@ -545,9 +505,8 @@ create_miner(XState *state, char* time_str)
     struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
     event_add(sig_ev, NULL);
 
-    pthread_create(&state->miner_, NULL, mine, (void*) miner_state);
-    
-
+    pthread_create(&state->miner_, NULL, mine, (void*) state);
+    printf("Created miner\n");
     return 0;
 }
 
@@ -577,14 +536,13 @@ void MinerState::reset_mining(int new_block)
     /* Restart next on next block*/
     cur_block_ = new_block;
 
-    //struct timeval tv { time_, 0};
     /* Random sleep time */
     struct timeval tv { rand() % 50 + this->time_, 0};
     mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
     event_add(mine_ev_, &tv);
 }
 
-void XState::broadcast_block(int new_block) 
+void XState::broadcast_block(string data) 
 {
     Client* clt = this->get_client();
 
@@ -593,15 +551,10 @@ void XState::broadcast_block(int new_block)
         return;
     }
 
-    stringstream ss;
-
-    util_serialize_block(new_block, ss);
-    string _tmp = ss.str();
-
-    if(bufferevent_write(clt->buf_ev_, _tmp.c_str(), _tmp.size()) != 0) {
+    if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) != 0) {
         cerr << "broadcast_block(): failed" << endl;
     } else {
-        cout << "broadcast_block() : sent, " << new_block << endl;
+        cout << "broadcast_block() : sent, " << data << endl;
     }
 
 }

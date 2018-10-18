@@ -2,7 +2,9 @@
 #include "util.h"
 
 #include <openssl/sha.h>
-
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 using namespace std;
 
 namespace xcoin {
@@ -23,15 +25,35 @@ namespace xcoin {
         ss << b;
     }
 
-
-    string sha1(const string& s, size_t n) 
+    string sha1(string &s) 
     {
-        unsigned char buf[SHA_DIGEST_LENGTH];
+        stringstream ss;
+        unsigned char buf[SHA_DIGEST_LENGTH] = {0};
+        SHA1(reinterpret_cast<const unsigned char*>(s.c_str()), 
+                s.length(), buf);
 
-        SHA1(reinterpret_cast<const unsigned char*>(s.c_str()), s.length(), buf);
-
-        return string(reinterpret_cast<char*>(buf));
+        //Convert to HEX
+        for(int i = 0 ; i < SHA_DIGEST_LENGTH ; i++ ) {
+            ss << hex << static_cast<int>(buf[i]);
+        }
+        return ss.str();
     }
+
+    //log_error(const char* format, ...) 
+    //{
+    //    char buffer[LOG_BUFFER_SIZE];
+    //    va_list arg_ptr;
+    //    va_start(arg_ptr, format);
+    //    int ret = vsnprintf(buffer, LOG_BUFFER_SIZE, format, arg_ptr);
+    //    va_end(arg_ptr);
+
+    //    if(ret < 0 || ret >= LOG_BUFFER_SIZE) {
+    //        buffer[limit-1] = 0;
+    //    }
+
+    //    printf("ERROR: %s\n", buffer);
+    //    return false;
+    //}
 }
 
 
