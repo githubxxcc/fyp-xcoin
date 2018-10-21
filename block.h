@@ -78,6 +78,15 @@ namespace xcoin
             bool process_block();
             static Block genesis();
 
+            string to_string() const {
+                stringstream ss;
+                ss  << "Index : " << index_ 
+                    << "Nonce : " << nonce_
+                    << "Hash : " << prev_hash_;
+
+                return ss.str();
+            }
+
             friend ostream& operator<<(ostream &strm, const Block&);
 
             friend class boost::serialization::access;
