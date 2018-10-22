@@ -110,7 +110,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         if(n <= 0) {
             break;
         }
-        spdlog::get("network")->debug("[Main - read_network] Read: {}", data);
+        spdlog::get("network")->info("[Main - read_network] Read: {}", data);
 
         /*  Append to the stack */
         ss << data;
@@ -204,7 +204,7 @@ void on_accept(int socket, short ev, void *arg)
 
     char addr_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_addr.sin_addr), addr_ip, INET_ADDRSTRLEN);
-    nwk_log->debug("[Main - on_accept] Accepted : {}", addr_ip);
+    nwk_log->info("[Main - on_accept] Accepted : {}", addr_ip);
 
     if (client_fd < 0) {
         err->warn("err: client_fd < 0\n");
