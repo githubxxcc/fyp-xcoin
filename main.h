@@ -1,13 +1,14 @@
 #ifndef XCOIN_MAIN_H_
 #define XCOIN_MAIN_H_
 
+#include <string>
 #include <arpa/inet.h>
 #include "block.h"
+#include <boost/program_options.hpp>
 
 namespace xcoin {
     /*  Constants  */ 
     constexpr int MINE_BASE_INTERVAL = 50; /*  Seconds  */
-
 
     typedef struct _Server Server;
     class MinerState;
@@ -21,7 +22,7 @@ namespace xcoin {
     class Client {
     public:
         int sd_;
-        char* server_host_name_;
+        string server_host_name_;
         in_addr_t server_ip_;
         struct bufferevent * buf_ev_;
     };

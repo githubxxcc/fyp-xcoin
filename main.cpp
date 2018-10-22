@@ -51,12 +51,21 @@
 using namespace std;
 using namespace xcoin;
 
+namespace b_po = boost::program_options;
+
+/*  ***************
+ *  Static Methods 
+ *  ****************/
+
 //static struct event_base *g_evbase;
+static void parse_cmd(int, char**);
 void buf_err_cb(struct bufferevent *bev, short what, void *arg);
 int create_miner(XState*, char*);
-
 static void check_result(bool, int, const char*);
 static stack<int> MINE_BLOCKS_Q;
+
+
+boost::program_options::variables_map INPUT_VAR_MAP;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
 static int N_CLIENT_NEXT_BLOCK = 10;
@@ -394,7 +403,7 @@ init(int argc, char* argv[])
     XState* state = static_cast<XState*>(calloc(1, sizeof(XState)));
     assert(state);
     state->evbase_ = event_base_new();
-    state->my_port_ = stoi(string(argv[3]));
+    state->my_port_ = INPUT_VAR_MAP["my-port"].as<int>();
     
     
     /*  Init Server Instance */
@@ -430,6 +439,9 @@ int main(int argc, char*argv[])
     auto network = spdlog::stdout_color_mt("network");
     
     console->info("Starting");
+    /*  Read in arguments  */
+    parse_cmd(argc, argv);
+
     /*  Init randome seed */
     auto state = init(argc, argv);
 
@@ -465,7 +477,7 @@ create_miner(XState *state, char* time_str)
     /* Miner state init */
     MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
     miner_state->evbase_ = event_base_new();
-    miner_state->time_ = stoi(string(time_str));
+    miner_state->time_ = INPUT_VAR_MAP["miner-timeout"].as<int>(); 
     state->miner_base_ = miner_state->evbase_;
     state->miner_state_ = miner_state;
 
@@ -560,11 +572,11 @@ XState::connect_peer(char* server_host_name, char* peer_port)
     Client * client = static_cast<Client*>(calloc(1, sizeof(Client)));
     check_result(client != NULL,0,"connect_peer(): calloc client failed");
 
-    client->server_host_name_ = strndup(server_host_name, (size_t) 50);
+    client->server_host_name_ = INPUT_VAR_MAP["ip"].as<string>();
     spdlog::get("network")->info("[MAIN - connect_peer] Connected: {}", client->server_host_name_);
     /*  get address */ 
     struct addrinfo* server_info;
-    int res = getaddrinfo(client->server_host_name_, NULL, NULL, &server_info);
+    int res = getaddrinfo(client->server_host_name_.c_str(), NULL, NULL, &server_info);
     if(res == -1) {
         //error
         printf("err in address\n");
@@ -591,8 +603,7 @@ XState::connect_peer(char* server_host_name, char* peer_port)
 
     listen_addr.sin_family = AF_INET;
     listen_addr.sin_addr.s_addr = client->server_ip_;
-    string port(peer_port);
-    listen_addr.sin_port=htons(stoi(port));
+    listen_addr.sin_port=htons(INPUT_VAR_MAP["peer-port"].as<int>());
 
     /*  Connect to the server */
     res = connect(client->sd_, (sockaddr *) &listen_addr, sizeof(listen_addr));
@@ -609,4 +620,38 @@ XState::connect_peer(char* server_host_name, char* peer_port)
 
     this->out_client_ = client;
     return client;
+}
+
+static void
+parse_cmd(int argc, char* argv[]) 
+{
+    auto console = spdlog::get("console");
+    b_po::options_description desc("Allwed Options");
+    desc.add_options()
+        ("miner-timeout", b_po::value<int>(), "miner's timeout value seed")
+        ("input-dir", b_po::value<string>(), "input data")
+        ("ip", b_po::value<string>(), "host name")
+        ("my-port", b_po::value<int>(), "my port")
+        ("peer-port", b_po::value<int>(), "peer port")
+        ;
+    
+    b_po::store(b_po::parse_command_line(argc, argv, desc), INPUT_VAR_MAP);
+    b_po::notify(INPUT_VAR_MAP);
+
+    /*  FIXME: Verify input variables */
+    assert(INPUT_VAR_MAP.count("input-dir"));
+    console->info("[MAIN - parse_cmd] Program Options: input-dir : {}",
+            INPUT_VAR_MAP["input-dir"].as<string>());
+
+    assert(INPUT_VAR_MAP.count("ip"));
+    console->info("[MAIN - parse_cmd] Program Options: ip : {}",
+            INPUT_VAR_MAP["ip"].as<string>());
+    
+    assert(INPUT_VAR_MAP.count("my-port"));
+    console->info("[MAIN - parse_cmd] Program Options: my port : {}",
+            INPUT_VAR_MAP["my-port"].as<int>());
+    
+    assert(INPUT_VAR_MAP.count("peer-port"));
+    console->info("[MAIN - parse_cmd] Program Options: peer port : {}",
+            INPUT_VAR_MAP["peer-port"].as<int>());
 }
