@@ -5,6 +5,10 @@
 #include "block.h"
 
 namespace xcoin {
+    /*  Constants  */ 
+    constexpr int MINE_BASE_INTERVAL = 50; /*  Seconds  */
+
+
     typedef struct _Server Server;
     class MinerState;
     class Client;
@@ -64,7 +68,7 @@ namespace xcoin {
             int time_;
             int cur_block_;
 
-            void reset_mining(int);
+            void reset_mining();
             bool has_new_block() const;
             Block* parse_block();
             bool find_hash(Block*, uint32_t) const;

@@ -100,7 +100,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         if(n <= 0) {
             break;
         }
-        spdlog::get("console")->info("[Main - read_network] Read: {}", data);
+        spdlog::get("network")->debug("[Main - read_network] Read: {}", data);
 
         /*  Append to the stack */
         ss << data;
@@ -117,7 +117,7 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
 void error_cb(struct bufferevent *bev, short events, void *aux)
 {
     if (events & BEV_EVENT_CONNECTED) {
-        spdlog::get("console")->info("[Main - err_cb] connected to miner/main");
+        spdlog::get("network")->debug("[Main - err_cb] connected to miner/main");
     } 
     else if (events & BEV_EVENT_ERROR) {
         spdlog::get("stderr")->warn("[Main - err_cb]  error");
@@ -154,7 +154,7 @@ buf_err_cb(struct bufferevent *bev, short what, void *arg)
     if (what & BEV_EVENT_EOF) {
         /*  Client disconnected, remove the read event and the
          *   * free the client structure. */
-        spdlog::get("console") -> info("[Main - buf_err_cb] Client disconnected.");
+        spdlog::get("network") -> debug("[Main - buf_err_cb] Client disconnected.");
     }
     else {
         spdlog::get("stderr") -> warn("Client socket error, disconnecting");
@@ -177,6 +177,7 @@ void on_accept(int socket, short ev, void *arg)
     Client* client;
     auto err = spdlog::get("stderr");
     auto console = spdlog::get("console");
+    auto nwk_log = spdlog::get("network");
 
     /* Create Client Instance */
     client = (Client *) calloc(1, sizeof(Client));
@@ -193,7 +194,7 @@ void on_accept(int socket, short ev, void *arg)
 
     char addr_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_addr.sin_addr), addr_ip, INET_ADDRSTRLEN);
-    console->info("[Main - on_accept] Accepted : {}", addr_ip);
+    nwk_log->debug("[Main - on_accept] Accepted : {}", addr_ip);
 
     if (client_fd < 0) {
         err->warn("err: client_fd < 0\n");
@@ -257,9 +258,7 @@ start_server(XState * state, char* time_str)
     event_add(ev_accept, NULL);
     
     /*  Running  */
-    printf("Waiting for connection \n");
-
-    
+    spdlog::get("network") -> info("[MAIN - start_server] Waiting for connection");
     return 0;
 }
 
@@ -283,20 +282,17 @@ miner_on_read(struct bufferevent *bev, void *arg)
         auto block = Block::deserialize(ss);
         ss.clear();
 
-        console->info("[MINER - on_read] Block: {}" , block.to_string());
+        console->debug("[MINER - miner_on_read] Block: {}" , block.to_string());
 
         if(block.process_block()) {
             /*  Reset the mining */
-            console->info("[Miner - on_read] prcess_blocked Ok");
-            //s->reset_mining();
+            console->info("[Miner - miner_on_read] PROCESS BLOCK OK : {}", block.to_string());
+            s->reset_mining();
         } else {
             /*  FIXME: What to do  */
-            err->warn("[Miner - on_read] Process blocked failed");
+            err->warn("[Miner - miner_on_read] Process blocked failed");
             exit(1);
         }
-
-        /*  Cancel the mining */
-        //s->reset_mining(new_block + 1);
     }
     
 }
@@ -320,7 +316,7 @@ main_on_read(struct bufferevent *bev, void *arg)
         if(n<=0)
             break;
         
-        spdlog::get("console")->info("[MINER - on_read] Read data: {}", data); 
+        spdlog::get("network")->info("[MINER - on_read] Read data: {}", data); 
             
         /*  Broadcast to peers */
         ss << data;
@@ -342,13 +338,13 @@ on_mine(int fd, short events, void* aux)
     auto blk_idx = BlockIndex::get_best_blkidx();
     assert(blk_idx != NULL);
     int nonce = rand() % 100;
-    console->info("[Miner - on_mine] using nonce : {}", nonce);
+    console->debug("[Miner - on_mine] USING NONCE : {}", nonce);
     auto new_block = new Block(blk_idx,nonce);
     
     /*  Add new block */
     new_block->accept_block();
     //debug_chains();
-    console->info("[Miner - on_mine] new block: {}" , new_block->to_string());
+    console->info("[Miner - on_mine] NEW BLOCK: {}" , new_block->to_string());
     
     /*  Serialize the block for sending */
     data = new_block->serialize();
@@ -388,6 +384,7 @@ XState*
 init(int argc, char* argv[])
 {
     auto console = spdlog::get("console");
+    auto nt_log = spdlog::get("network");
 
     /*  FIXME: check input */
     int res; 
@@ -401,15 +398,15 @@ init(int argc, char* argv[])
     
     
     /*  Init Server Instance */
-    console->info("[Main - init] Starting Server\n");
+    nt_log->info("[Main - init] Starting Server\n");
     res = start_server(state, argv[4]);
     check_result(res == 0, 0, "init(): init server failes\n");
-    console->info("[Main - init] Server Started, Looping ...\n");
+    nt_log->info("[Main - init] Server Started, Looping ...\n");
 
     /* Connect to unknown peers */
    auto client = state->connect_peer(argv[1], argv[2]);
    check_result(client != NULL, 1, "init(): failed to connect to client"); 
-   console->info("[Main - init] Connected peer\n");
+   nt_log->info("[Main - init] Connected peer\n");
 
     /*  Set up mining thread */
     create_miner(state, argv[4]);
@@ -430,6 +427,7 @@ int main(int argc, char*argv[])
     /*  Settup Logger */
     auto console = spdlog::stdout_color_mt("console");
     auto err_log = spdlog::stderr_color_mt("stderr");
+    auto network = spdlog::stdout_color_mt("network");
     
     console->info("Starting");
     /*  Init randome seed */
@@ -512,22 +510,21 @@ check_result(bool ok, int fatal, const char* msg)
 }
 
 
-//FIXME: not reset for now
-void MinerState::reset_mining(int new_block)
+/*  Reset the mining sleep
+ *  */
+void MinerState::reset_mining()
 {
+    spdlog::get("console")->info("[MINER - reset_mining] RESET TIMER");
+
     /* Cancel timer */
     assert(mine_ev_ != NULL);
     assert(evtimer_pending(mine_ev_, NULL));
-    //cout << "reset_mining():cancelling event " << new_block << "\n" <<endl;
     if (event_del(mine_ev_) != 0) {
-        cerr << "reset_mining(): event_del faield\n";
+        spdlog::get("stderr")->warn("[MINER - reset_mining] event_del faield");
     }
     
-    /* Restart next on next block*/
-    cur_block_ = new_block;
-
     /* Random sleep time */
-    struct timeval tv { rand() % 50 + this->time_, 0};
+    struct timeval tv { rand() % MINE_BASE_INTERVAL + this->time_, 0};
     mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
     event_add(mine_ev_, &tv);
 }
@@ -546,7 +543,7 @@ void XState::broadcast_block(string data)
     if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) != 0) {
         err->warn("[Main - broadcast_block] buffer write failed");
     } else {
-        spdlog::get("console")->info("[Main - broadcast_block]: Sent {} ", data);
+        spdlog::get("network")->info("[Main - broadcast_block]: Sent {} ", data);
     }
 }
 
@@ -564,7 +561,7 @@ XState::connect_peer(char* server_host_name, char* peer_port)
     check_result(client != NULL,0,"connect_peer(): calloc client failed");
 
     client->server_host_name_ = strndup(server_host_name, (size_t) 50);
-    printf("server_host_name: %s\n", client->server_host_name_);
+    spdlog::get("network")->info("[MAIN - connect_peer] Connected: {}", client->server_host_name_);
     /*  get address */ 
     struct addrinfo* server_info;
     int res = getaddrinfo(client->server_host_name_, NULL, NULL, &server_info);
@@ -577,7 +574,7 @@ XState::connect_peer(char* server_host_name, char* peer_port)
 
     char str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client->server_ip_), str, INET_ADDRSTRLEN);
-    printf("server ip: %s\n", str);
+    spdlog::get("network")->debug("[MAIN - connect_peer] server ip: {}", str);
 
     freeaddrinfo(server_info);
 

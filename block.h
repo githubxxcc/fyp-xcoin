@@ -80,8 +80,8 @@ namespace xcoin
 
             string to_string() const {
                 stringstream ss;
-                ss  << "Index : " << index_ 
-                    << "Nonce : " << nonce_
+                ss  << "Index : " << index_  << " | " 
+                    << "Nonce : " << nonce_  << " | " 
                     << "Hash : " << prev_hash_;
 
                 return ss.str();
