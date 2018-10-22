@@ -60,12 +60,13 @@ namespace b_po = boost::program_options;
 //static struct event_base *g_evbase;
 static void parse_cmd(int, char**);
 void buf_err_cb(struct bufferevent *bev, short what, void *arg);
-int create_miner(XState*, char*);
+int create_miner(XState*);
 static void check_result(bool, int, const char*);
 static stack<int> MINE_BLOCKS_Q;
 
 
 boost::program_options::variables_map INPUT_VAR_MAP;
+Config SYS_CONFIG;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
 static int N_CLIENT_NEXT_BLOCK = 10;
@@ -225,7 +226,7 @@ void on_accept(int socket, short ev, void *arg)
 }
 
 int 
-start_server(XState * state, char* time_str)
+start_server(XState * state)
 {
     /*  Record Peer */
     //state->peer_name_ = server_host_name;
@@ -390,7 +391,7 @@ mine(void* aux)
 
 
 XState*
-init(int argc, char* argv[])
+init()
 {
     auto console = spdlog::get("console");
     auto nt_log = spdlog::get("network");
@@ -403,22 +404,23 @@ init(int argc, char* argv[])
     XState* state = static_cast<XState*>(calloc(1, sizeof(XState)));
     assert(state);
     state->evbase_ = event_base_new();
-    state->my_port_ = INPUT_VAR_MAP["my-port"].as<int>();
+    state->my_port_ = SYS_CONFIG.my_port;
     
     
     /*  Init Server Instance */
     nt_log->info("[Main - init] Starting Server\n");
-    res = start_server(state, argv[4]);
+    res = start_server(state);
     check_result(res == 0, 0, "init(): init server failes\n");
     nt_log->info("[Main - init] Server Started, Looping ...\n");
 
     /* Connect to unknown peers */
-   auto client = state->connect_peer(argv[1], argv[2]);
+    /* TODO : CONNECT TO ALL */
+   auto client = state->connect_peer(SYS_CONFIG.peers[0]);
    check_result(client != NULL, 1, "init(): failed to connect to client"); 
    nt_log->info("[Main - init] Connected peer\n");
 
     /*  Set up mining thread */
-    create_miner(state, argv[4]);
+    create_miner(state);
 
     /* Set up the chain genesis block */
     Block genesis = Block::genesis();
@@ -443,7 +445,7 @@ int main(int argc, char*argv[])
     parse_cmd(argc, argv);
 
     /*  Init randome seed */
-    auto state = init(argc, argv);
+    auto state = init();
 
     event_base_dispatch(state->evbase_);
 
@@ -467,7 +469,7 @@ on_kill(int fd, short events, void* aux)
 }
 
 int
-create_miner(XState *state, char* time_str) 
+create_miner(XState *state) 
 {
     
     /*  Comm bev, named by Read side */
@@ -477,7 +479,7 @@ create_miner(XState *state, char* time_str)
     /* Miner state init */
     MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
     miner_state->evbase_ = event_base_new();
-    miner_state->time_ = INPUT_VAR_MAP["miner-timeout"].as<int>(); 
+    miner_state->time_ = SYS_CONFIG.miner_timeout; 
     state->miner_base_ = miner_state->evbase_;
     state->miner_state_ = miner_state;
 
@@ -567,12 +569,12 @@ XState::get_client() const
 }
 
 Client* 
-XState::connect_peer(char* server_host_name, char* peer_port)
+XState::connect_peer(PeerAddr& peer)
 {
     Client * client = static_cast<Client*>(calloc(1, sizeof(Client)));
     check_result(client != NULL,0,"connect_peer(): calloc client failed");
 
-    client->server_host_name_ = INPUT_VAR_MAP["ip"].as<string>();
+    client->server_host_name_ = peer.host;
     spdlog::get("network")->info("[MAIN - connect_peer] Connected: {}", client->server_host_name_);
     /*  get address */ 
     struct addrinfo* server_info;
@@ -603,7 +605,7 @@ XState::connect_peer(char* server_host_name, char* peer_port)
 
     listen_addr.sin_family = AF_INET;
     listen_addr.sin_addr.s_addr = client->server_ip_;
-    listen_addr.sin_port=htons(INPUT_VAR_MAP["peer-port"].as<int>());
+    listen_addr.sin_port=htons(peer.port);
 
     /*  Connect to the server */
     res = connect(client->sd_, (sockaddr *) &listen_addr, sizeof(listen_addr));
@@ -628,11 +630,7 @@ parse_cmd(int argc, char* argv[])
     auto console = spdlog::get("console");
     b_po::options_description desc("Allwed Options");
     desc.add_options()
-        ("miner-timeout", b_po::value<int>(), "miner's timeout value seed")
         ("input-dir", b_po::value<string>(), "input data")
-        ("ip", b_po::value<string>(), "host name")
-        ("my-port", b_po::value<int>(), "my port")
-        ("peer-port", b_po::value<int>(), "peer port")
         ;
     
     b_po::store(b_po::parse_command_line(argc, argv, desc), INPUT_VAR_MAP);
@@ -642,16 +640,8 @@ parse_cmd(int argc, char* argv[])
     assert(INPUT_VAR_MAP.count("input-dir"));
     console->info("[MAIN - parse_cmd] Program Options: input-dir : {}",
             INPUT_VAR_MAP["input-dir"].as<string>());
+    string input_data_dir = INPUT_VAR_MAP["input-dir"].as<string>();
 
-    assert(INPUT_VAR_MAP.count("ip"));
-    console->info("[MAIN - parse_cmd] Program Options: ip : {}",
-            INPUT_VAR_MAP["ip"].as<string>());
-    
-    assert(INPUT_VAR_MAP.count("my-port"));
-    console->info("[MAIN - parse_cmd] Program Options: my port : {}",
-            INPUT_VAR_MAP["my-port"].as<int>());
-    
-    assert(INPUT_VAR_MAP.count("peer-port"));
-    console->info("[MAIN - parse_cmd] Program Options: peer port : {}",
-            INPUT_VAR_MAP["peer-port"].as<int>());
+    SYS_CONFIG = parse_config(input_data_dir);
+    //SYS_CONFIG.print();
 }

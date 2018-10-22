@@ -7,6 +7,7 @@
 #include <iostream>
 using namespace std;
 
+extern string INPUT_DATA_DIR;
 namespace xcoin {
     int util_get_block(char* buf, size_t size) 
     {
@@ -54,6 +55,28 @@ namespace xcoin {
     //    printf("ERROR: %s\n", buffer);
     //    return false;
     //}
+    
+    Config parse_config(string &input) 
+    {
+        Config config;
+        auto file = cpptoml::parse_file(input);
+        auto peers = file->get_table_array("peers");
+
+        for(const auto& table: *peers) {
+            PeerAddr peer;
+
+            //FIXME: unwrapping values
+            peer.host = *table->get_as<string>("peer-host");
+            peer.port = *table->get_as<int>("peer-port");
+            config.peers.push_back(peer);
+        }
+
+
+        config.my_port = file->get_as<int>("my-port").value_or(50001);
+        config.miner_timeout = file->get_as<int>("miner-timeout").value_or(30); 
+
+        return config;
+    }
 }
 
 

@@ -42,10 +42,10 @@
     <!-- our nodes and the applications they run -->
 
     <host id="peer1" geocodehint="US">
-        <process plugin="xcoin" starttime="1" arguments="--ip=peer2 --my-port=50001 --peer-port=50002 --miner-timeout=20 --input-dir=./data"/>
+        <process plugin="xcoin" starttime="1" arguments="--input-dir=./data/peer1.toml"/>
     </host>
     <host id="peer2">
-        <process plugin="xcoin" starttime="1" arguments="--ip=peer1 --my-port=50002 --peer-port=50001 --miner-timeout=20 --input-dir=./data"/>
+        <process plugin="xcoin" starttime="1" arguments="--input-dir=./data/peer2.toml"/>
     </host>
 
 </shadow>

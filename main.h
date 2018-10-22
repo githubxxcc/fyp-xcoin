@@ -4,6 +4,7 @@
 #include <string>
 #include <arpa/inet.h>
 #include "block.h"
+#include "util.h"
 #include <boost/program_options.hpp>
 
 namespace xcoin {
@@ -52,7 +53,7 @@ namespace xcoin {
         struct bufferevent * r_bev_;
         struct bufferevent * w_bev_;
 
-        Client* connect_peer(char* name, char* port);
+        Client* connect_peer(PeerAddr &);
         /* Get the incoming client */ //FIXME: how about out clients
         Client* get_client() const;
         void broadcast_block(string);
