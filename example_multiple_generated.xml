@@ -45,7 +45,4 @@
   <host id="peer3">
     <process arguments="--input-dir=./data/peer3.toml" plugin="xcoin" starttime="1"/>
   </host>
-  <host id="peer4">
-    <process arguments="--input-dir=./data/peer4.toml" plugin="xcoin" starttime="1"/>
-  </host>
 </shadow>

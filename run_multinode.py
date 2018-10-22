@@ -23,6 +23,7 @@ def setup_multiple_node_xml(node_num):
 
     tree.write(new_xml, pretty_print=True)
 
+# Setup up TOML
 def setup_multiple_node_data(node_num):
     os.system("rm -rf ./data/*")
     BASE_PORT = 50000
@@ -35,7 +36,12 @@ def setup_multiple_node_data(node_num):
         # Write peers information
         file.write('[[peers]]\n')
         file.write('peer-host = "peer%d"\n' % ((i+1) % node_num))
-        file.write('peer-port = "%d"\n' % (BASE_PORT + (i+1)%node_num))
+        file.write('peer-port = %d\n' % (BASE_PORT + (i+1)%node_num))
+
+        file.write('[[peers]]\n')
+        file.write('peer-host = "peer%d"\n' % ((i+2) % node_num))
+        file.write('peer-port = %d\n' % (BASE_PORT + (i+2)%node_num))
+
         file.close()
 
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):

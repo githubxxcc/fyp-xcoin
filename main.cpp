@@ -60,13 +60,14 @@ namespace b_po = boost::program_options;
 //static struct event_base *g_evbase;
 static void parse_cmd(int, char**);
 void buf_err_cb(struct bufferevent *bev, short what, void *arg);
-int create_miner(XState*);
+int create_miner();
 static void check_result(bool, int, const char*);
 static stack<int> MINE_BLOCKS_Q;
 
 
 boost::program_options::variables_map INPUT_VAR_MAP;
 Config SYS_CONFIG;
+XState* SYS_STATE;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
 static int N_CLIENT_NEXT_BLOCK = 10;
@@ -100,10 +101,9 @@ static pthread_mutex_t MUTEX = PTHREAD_MUTEX_INITIALIZER;
 
 void buf_read_cb(struct bufferevent *bev, void *arg )
 {
-    XState* state = static_cast<XState*>(arg);
+    XState* state = SYS_STATE;
     size_t n;
     stringstream ss;
-
     for(;;) {
         char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
@@ -159,8 +159,7 @@ setnonblock(int fd)
 void
 buf_err_cb(struct bufferevent *bev, short what, void *arg)
 {
-    XState *state = (XState *)arg;
-    Client *client = state->in_client_;
+    Client *client = static_cast<Client*>(arg);
     if (what & BEV_EVENT_EOF) {
         /*  Client disconnected, remove the read event and the
          *   * free the client structure. */
@@ -183,7 +182,7 @@ void on_accept(int socket, short ev, void *arg)
 {
     int client_fd;
     struct sockaddr_in client_addr;
-    XState * state = static_cast<XState*>(arg);
+    XState * state = SYS_STATE;
     Client* client;
     auto err = spdlog::get("stderr");
     auto console = spdlog::get("console");
@@ -218,19 +217,18 @@ void on_accept(int socket, short ev, void *arg)
     client->sd_ = client_fd;
     client->buf_ev_ = bufferevent_socket_new(state->evbase_, client_fd, 0);
 
-    bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, state);
+    bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, client);
     bufferevent_enable(client->buf_ev_, EV_READ | EV_WRITE);
 
-    state->in_client_ = client;
-    /* TODO: add the client to the peers */
+    state->add_client_in(client);
 }
 
 int 
-start_server(XState * state)
+start_server()
 {
     /*  Record Peer */
     //state->peer_name_ = server_host_name;
-
+    auto state = SYS_STATE;
     /*  Create the socket  */
     state->server.sd_ = socket(AF_INET, (SOCK_STREAM | SOCK_NONBLOCK), 0);
     if(state->server.sd_ == -1) {
@@ -368,7 +366,7 @@ void *
 mine(void* aux) 
 {
     auto console = spdlog::get("console");
-    XState* state = static_cast<XState*>(aux);
+    XState* state = SYS_STATE;
     MinerState* my_state = state->miner_state_;
 
     console->info("[Miner - mine] Miner running\n"); 
@@ -401,26 +399,30 @@ init()
     srand(time(NULL));
     
     /* Init State relevant info */
-    XState* state = static_cast<XState*>(calloc(1, sizeof(XState)));
+    XState* state = new XState(); 
     assert(state);
+    SYS_STATE = state;
     state->evbase_ = event_base_new();
     state->my_port_ = SYS_CONFIG.my_port;
+
     
     
     /*  Init Server Instance */
     nt_log->info("[Main - init] Starting Server\n");
-    res = start_server(state);
+    res = start_server();
     check_result(res == 0, 0, "init(): init server failes\n");
     nt_log->info("[Main - init] Server Started, Looping ...\n");
 
     /* Connect to unknown peers */
     /* TODO : CONNECT TO ALL */
-   auto client = state->connect_peer(SYS_CONFIG.peers[0]);
-   check_result(client != NULL, 1, "init(): failed to connect to client"); 
-   nt_log->info("[Main - init] Connected peer\n");
+    for(auto peer_addr : SYS_CONFIG.peers) {
+        auto client = state->connect_peer(peer_addr);
+        check_result(client != NULL, 1, "init(): failed to connect to client"); 
+        nt_log->info("[Main - init] Connected peer {}\n", client->server_host_name_);
+    }
 
     /*  Set up mining thread */
-    create_miner(state);
+    create_miner();
 
     /* Set up the chain genesis block */
     Block genesis = Block::genesis();
@@ -445,13 +447,12 @@ int main(int argc, char*argv[])
     parse_cmd(argc, argv);
 
     /*  Init randome seed */
-    auto state = init();
+    init();
+    event_base_dispatch(SYS_STATE->evbase_);
 
-    event_base_dispatch(state->evbase_);
-
-    pthread_join(state->miner_, NULL);
-    pthread_cond_destroy(&COND);
-    pthread_mutex_destroy(&MUTEX);
+    pthread_join(SYS_STATE->miner_, NULL);
+    //pthread_cond_destroy(&COND);
+    //pthread_mutex_destroy(&MUTEX);
     //pthread_exit(NULL);
     return 0;
 }
@@ -460,7 +461,8 @@ int main(int argc, char*argv[])
 void 
 on_kill(int fd, short events, void* aux)
 {
-    XState* state = static_cast<XState*>(aux);
+    //XState* state = static_cast<XState*>(aux);
+    XState* state = SYS_STATE;
     
     //struct timeval tv { 1,0};
     spdlog::get("console")->info("Shutting down miner");
@@ -469,9 +471,10 @@ on_kill(int fd, short events, void* aux)
 }
 
 int
-create_miner(XState *state) 
+create_miner() 
 {
-    
+    XState* state = SYS_STATE; 
+
     /*  Comm bev, named by Read side */
     struct bufferevent * main_bev_pair[2];  
     struct bufferevent * miner_bev_pair[2];
@@ -546,27 +549,25 @@ void MinerState::reset_mining()
 void XState::broadcast_block(string data) 
 {
     auto err = spdlog::get("stderr");
+    
+    for(auto itr = out_clients_.begin() ; itr != out_clients_.end(); ++itr) {
+        auto clt = itr->second; 
 
-    Client* clt = this->get_client();
+        if (clt == NULL) {
+            err->warn("[Main - broadcast_block] no client conencted");
+            return;
+        }
 
-    if (clt == NULL) {
-        err->warn("[Main - broadcast_block] no client conencted");
-        return;
+        if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) != 0) {
+            err->warn("[Main - broadcast_block] buffer write failed");
+        } else {
+            spdlog::get("network")->info("[Main - broadcast_block]: Sent to {}", itr->first);
+        }
     }
 
-    if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) != 0) {
-        err->warn("[Main - broadcast_block] buffer write failed");
-    } else {
-        spdlog::get("network")->info("[Main - broadcast_block]: Sent {} ", data);
-    }
 }
 
 
-Client*
-XState::get_client() const
-{
-    return this->out_client_;
-}
 
 Client* 
 XState::connect_peer(PeerAddr& peer)
@@ -619,9 +620,33 @@ XState::connect_peer(PeerAddr& peer)
     client->buf_ev_ = bufferevent_socket_new(this->evbase_, client->sd_, 0);
     res = bufferevent_enable(client->buf_ev_, EV_WRITE|EV_READ);
     check_result(res == 0, 0, "connect_peer(): bufferevent_enable failed");
-
-    this->out_client_ = client;
+    
+    //TODO:BUG:
+    this->add_client_out(client);
+    //this->out_client_ = client;
     return client;
+}
+
+void XState::add_client_out(Client * c) {
+    auto nw_log = spdlog::get("network");
+    
+    if(this->out_clients_.count(c->server_host_name_)) {
+        nw_log->info("[Main - add_client_out] Duplicate Client {}", c->server_host_name_); 
+    }
+    
+    /*  Overwrite with the new one */
+    this->out_clients_.insert(make_pair(c->server_host_name_, c));
+}
+
+void XState::add_client_in(Client * c) {
+    auto nw_log = spdlog::get("network");
+    
+    if(this->in_clients_.count(c->server_host_name_)) {
+        nw_log->info("[Main - add_client_in] Duplicate Client {}", c->server_host_name_); 
+    }
+    
+    /*  Overwrite with the new one */
+    this->in_clients_.insert(make_pair(c->server_host_name_, c));
 }
 
 static void

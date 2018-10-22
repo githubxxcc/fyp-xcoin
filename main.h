@@ -2,6 +2,7 @@
 #define XCOIN_MAIN_H_
 
 #include <string>
+#include <unordered_map>
 #include <arpa/inet.h>
 #include "block.h"
 #include "util.h"
@@ -36,11 +37,11 @@ namespace xcoin {
         int my_port_;
 
         /* Outgoing Clients */
-        Client* out_client_;
+        unordered_map<string, Client*> out_clients_;
         
         /*  For incoming client instance. For callback */
-        Client * in_client_;
         struct event_base * evbase_;
+        unordered_map<string, Client*> in_clients_;
 
         /*  Miner state */
         pthread_t miner_;
@@ -54,10 +55,9 @@ namespace xcoin {
         struct bufferevent * w_bev_;
 
         Client* connect_peer(PeerAddr &);
-        /* Get the incoming client */ //FIXME: how about out clients
-        Client* get_client() const;
         void broadcast_block(string);
-
+        void add_client_in(Client*);
+        void add_client_out(Client*);
     };
 
     class MinerState {
