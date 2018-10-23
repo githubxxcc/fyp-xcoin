@@ -27,6 +27,9 @@ namespace xcoin
             uint32_t nbit_;
             int nonce_;
 
+            /*  Data  */
+            string miner_;
+
             //string data_;
             
             Block() {
@@ -47,13 +50,16 @@ namespace xcoin
                 nbit_ = par.nbit_;
             }
 
-            Block(BlockIndex* blk, int);
+            Block(BlockIndex*, int, string&);
+
 
             void set_null() {
                 index_ = 0;
-                prev_hash_= string("NULL");
+                prev_hash_= string();
                 nbit_ = 5;
                 nonce_ = 0;
+
+                miner_ = string();
             }
 
             string serialize() {
@@ -82,7 +88,8 @@ namespace xcoin
                 stringstream ss;
                 ss  << "Index : " << index_  << " | " 
                     << "Nonce : " << nonce_  << " | " 
-                    << "Hash : " << prev_hash_;
+                    << "Hash : " << prev_hash_ << " | "
+                    << "Miner : " << miner_ ;
 
                 return ss.str();
             }
@@ -97,6 +104,7 @@ namespace xcoin
                 ar  & prev_hash_;
                 ar  & nbit_;
                 ar  & nonce_;
+                ar  & miner_;
             }
 
     };
@@ -113,6 +121,8 @@ namespace xcoin
             uint32_t nbit_;
             int nonce_;
             string  hash_;
+
+            string miner_;
 
             //BlockIndex() 
             //{
@@ -137,20 +147,25 @@ namespace xcoin
                 nbit_ = block.nbit_;
                 nonce_ = block.nonce_;
                 hash_ = block.get_hash();
+                miner_ = block.miner_;
             }
 
             string to_string() const {
                 stringstream ss;
                 ss  << "n_height : " << n_height_ << "| " 
-                    <<  "hash : " << hash_ << " | ";
+                    <<  "hash : " << hash_ << " | " 
+                    << " miner: " << miner_ ;
                 return ss.str();
             }
+
+            int get_height() const { return n_height_;}
 
             static BlockIndex* get_best_blkidx() ;
     };
 
 
     void debug_chains();
+    int best_blk_height();
 
    // class Chain {
    //     public:

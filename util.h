@@ -32,6 +32,7 @@ namespace xcoin
         public:
             vector<PeerAddr> peers;
             int my_port;
+            string my_addr;
             int miner_timeout;
 
         void print() {

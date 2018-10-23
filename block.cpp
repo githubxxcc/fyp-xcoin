@@ -29,11 +29,12 @@ namespace xcoin
     /* ************************ 
      * Block
      *  */
-    Block::Block(BlockIndex* blk_idx, int nonce) : nonce_(nonce) 
+    Block::Block(BlockIndex* blk_idx, int nonce, string& name) : nonce_(nonce) 
     {
-        index_ = blk_idx->n_height_ + 1;
+        index_ = blk_idx->get_height() + 1;
         prev_hash_ = blk_idx->hash_;
         nbit_ = blk_idx->nbit_;
+        miner_ = name;
     }
 
 
@@ -141,6 +142,7 @@ namespace xcoin
 
     bool Block::process_block() 
     {
+        debug_chains();
         string hash = this->get_hash();
 
         /*  Check for duplicates */
@@ -227,6 +229,12 @@ namespace xcoin
     /*  ************************
      *  Utility methods
      * */
+
+    int
+    best_blk_height() 
+    {
+        return g_best_height;
+    }
 
     void
     debug_chains() 

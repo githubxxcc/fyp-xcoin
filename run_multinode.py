@@ -54,8 +54,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if args.nodenum == None:
-        print "Need --nodenum option. usage: run_multinode_experiment.py --nodenum 100"
-        exit(1)
+        args.nodenum = 4
     if args.workernum == None:
         args.workernum = 1
 

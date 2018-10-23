@@ -119,7 +119,6 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
 
         /*  Process the block here */
         auto block = Block::deserialize(ss);
-        ss.clear();
 
         console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
 
@@ -127,10 +126,11 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
             /*  Reset the mining */
             console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
             state->miner_state_->reset_mining();
+
+            /*  Relay the block to others if needed*/
+            state->broadcast_block(ss.str());
         } else {
-            /*  FIXME: What to do  */
             err->warn("[Miner - buf_read_cb] Process blocked failed");
-            exit(1);
         }
 
         ss.clear();
@@ -319,7 +319,6 @@ miner_on_read(struct bufferevent *bev, void *arg)
         } else {
             /*  FIXME: What to do  */
             err->warn("[Miner - miner_on_read] Process blocked failed");
-            exit(1);
         }
     }
     
@@ -367,7 +366,7 @@ on_mine(int fd, short events, void* aux)
     assert(blk_idx != NULL);
     int nonce = rand() % 100;
     console->debug("[Miner - on_mine] USING NONCE : {}", nonce);
-    auto new_block = new Block(blk_idx,nonce);
+    auto new_block = new Block(blk_idx,nonce, my_state->name_);
     
     /*  Add new block */
     new_block->accept_block();
@@ -424,6 +423,7 @@ init()
     SYS_STATE = state;
     state->evbase_ = event_base_new();
     state->my_port_ = SYS_CONFIG.my_port;
+    state->my_addr_ = SYS_CONFIG.my_addr;
 
     
     
@@ -500,9 +500,12 @@ create_miner()
     struct bufferevent * miner_bev_pair[2];
 
     /* Miner state init */
-    MinerState *miner_state = static_cast<MinerState*>(calloc(1, sizeof(MinerState)));
+    MinerState * miner_state = new MinerState();
     miner_state->evbase_ = event_base_new();
     miner_state->time_ = SYS_CONFIG.miner_timeout; 
+    miner_state->name_ = state->my_addr_;
+
+
     state->miner_base_ = miner_state->evbase_;
     state->miner_state_ = miner_state;
 

@@ -35,6 +35,7 @@ namespace xcoin {
         Server server;
 
         int my_port_;
+        string my_addr_;
 
         /* Outgoing Clients */
         unordered_map<string, Client*> out_clients_;
@@ -47,8 +48,6 @@ namespace xcoin {
         pthread_t miner_;
         struct event_base * miner_base_;
         MinerState * miner_state_;
-
-        char* peer_name_;
 
         /*  Communication Sockets to Miner */
         struct bufferevent * r_bev_;
@@ -69,6 +68,7 @@ namespace xcoin {
             struct evbuffer * w_out_;
             int time_;
             int cur_block_;
+            string name_;
 
             void reset_mining();
             bool has_new_block() const;
