@@ -104,6 +104,8 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
     XState* state = SYS_STATE;
     size_t n;
     stringstream ss;
+    auto console = spdlog::get("console");
+    auto err = spdlog::get("stderr");
     for(;;) {
         char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
@@ -114,13 +116,31 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
 
         /*  Append to the stack */
         ss << data;
-        string blk_str = ss.str();
+
+        /*  Process the block here */
+        auto block = Block::deserialize(ss);
+        ss.clear();
+
+        console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
+
+        if(block.process_block()) {
+            /*  Reset the mining */
+            console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
+            state->miner_state_->reset_mining();
+        } else {
+            /*  FIXME: What to do  */
+            err->warn("[Miner - buf_read_cb] Process blocked failed");
+            exit(1);
+        }
+
         ss.clear();
 
         /*  Pass next miner block, call miner_on_read */
-        if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
-            spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
-        }
+        //string blk_str = ss.str();
+        //ss.clear();
+        //if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
+        //    spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
+        //}
     }
 }
 
@@ -324,7 +344,7 @@ main_on_read(struct bufferevent *bev, void *arg)
         if(n<=0)
             break;
         
-        spdlog::get("network")->info("[MINER - on_read] Read data: {}", data); 
+        spdlog::get("network")->info("[Main - on_read] Read data: {}", data); 
             
         /*  Broadcast to peers */
         ss << data;
