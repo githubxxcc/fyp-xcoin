@@ -7,6 +7,8 @@
 #include <iostream>
 #include <assert.h>
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 namespace xcoin 
 {
@@ -142,6 +144,7 @@ namespace xcoin
 
     bool Block::process_block() 
     {
+        auto err = spdlog::get("stderr");
         debug_chains();
         string hash = this->get_hash();
 
@@ -163,9 +166,8 @@ namespace xcoin
 
         /*  If previous block not present => it's an orphan */
         if(!g_block_index.count(this->prev_hash_)) {
+            err->info("[Main - process_block] Orphan Block : {}", hash);     
             g_orphan_blocks.insert(make_pair(hash, this));
-            
-            //FIXME: what does the prev_blocks do?
             g_orphan_prev_blocks.insert(make_pair(this->prev_hash_, this));
             
             //FIXME: ask for the missing blocks?
@@ -203,7 +205,7 @@ namespace xcoin
                     work_q.push_back(orphan_blk->get_hash());
                 }
 
-                /*  Delete the orphan even if it is not deleted */
+                /*  Delete the orphan hash even if it is not deleted */
                 g_orphan_blocks.erase(orphan_blk->get_hash());
 
                 //FIXME: delete orphan block? 
@@ -237,7 +239,7 @@ namespace xcoin
     }
 
     void
-    debug_chains() 
+    debug_chains()
     {
         // Print heigh
         cout << "------- Cur Height ------\n";
@@ -248,11 +250,23 @@ namespace xcoin
         assert(g_best_index != NULL);
         cout << "------- Best Chain ------\n";
         BlockIndex* tmp_blk = g_best_index;
+        int cnt = 0;        // current row idx
+        int row_cnt = 3;    // 5 blocks per row
         while(tmp_blk != NULL) {
-            cout << tmp_blk->to_string() << "\n";
-            cout << "+\n";
+            cnt++;
+            cout << tmp_blk->to_short_string() << " ---> ";
+            if(cnt == row_cnt) {
+                cout << "\n";
+                cnt = 0;
+            }
             tmp_blk = tmp_blk->pprev_;
         }
+
+        cout << "\n";
+    }
+
+    void debug_all_chains()
+    {
     }
 
 

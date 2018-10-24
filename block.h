@@ -84,7 +84,7 @@ namespace xcoin
             bool process_block();
             static Block genesis();
 
-            string to_string() const {
+            string to_string() {
                 stringstream ss;
                 ss  << "Index : " << index_  << " | " 
                     << "Nonce : " << nonce_  << " | " 
@@ -93,6 +93,7 @@ namespace xcoin
 
                 return ss.str();
             }
+
 
             friend ostream& operator<<(ostream &strm, const Block&);
 
@@ -158,13 +159,21 @@ namespace xcoin
                 return ss.str();
             }
 
+            string to_short_string() const {
+                char buf[512];
+                sprintf(buf, "[h:%d - hash:%s - miner:%s]", 
+                        n_height_,  hash_.substr(0, 6).c_str(), miner_.c_str());
+                return string(buf);
+            }
+
             int get_height() const { return n_height_;}
 
             static BlockIndex* get_best_blkidx() ;
     };
 
 
-    void debug_chains();
+    void debug_chains() ;
+    void debug_all_chains() ;
     int best_blk_height();
 
    // class Chain {
