@@ -11,8 +11,7 @@ namespace xcoin
 {
     class Config;
     class PeerAddr;
-
-
+    
     int util_get_block(char*, size_t);
     void util_serialize_block(int, stringstream &);
 

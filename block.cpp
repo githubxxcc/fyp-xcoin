@@ -17,8 +17,11 @@ namespace xcoin
      * GLobal State
      * */
     unordered_map<string, BlockIndex*> g_block_index;
-    multimap<string, Block*> g_orphan_blocks;
+    map<string, Block*> g_orphan_blocks;
     multimap<string, Block*> g_orphan_prev_blocks;
+
+
+    void debug_maps(string name, multimap<string, Block*> map);
 
     const string g_genesis_hash("e9d9579737f7e206617cd903ce42d986d5a2f");
     BlockIndex* g_genesis_indexblk = NULL;
@@ -147,6 +150,11 @@ namespace xcoin
         auto err = spdlog::get("stderr");
         debug_chains();
         string hash = this->get_hash();
+        
+        //DEBUG
+        if(g_orphan_prev_blocks.count(hash)) {
+            err->warn("[Miner - connect_orphans] orphan Count Previous Hash: {}", hash);
+        }
 
         /*  Check for duplicates */
         if(g_block_index.count(hash)) {
@@ -163,17 +171,20 @@ namespace xcoin
             cerr << "process_block(): check block failed \n"<<endl;
             return false;
         }
+        
 
         /*  If previous block not present => it's an orphan */
         if(!g_block_index.count(this->prev_hash_)) {
-            err->info("[Main - process_block] Orphan Block : {}", hash);     
+            err->info("[Main - process_block] Orphan Block : {} - Parent: {}", hash, prev_hash_);     
             g_orphan_blocks.insert(make_pair(hash, this));
-            g_orphan_prev_blocks.insert(make_pair(this->prev_hash_, this));
+            g_orphan_prev_blocks.insert(make_pair(prev_hash_, this));
             
             //FIXME: ask for the missing blocks?
+            connect_orphans(hash);
             return true;
         }
-
+        
+        /*  Not an orphan, add to the chains  */
         if(!this->accept_block()) {
             cerr << "process_block(): accept_block failed\n" << endl;
             return false;
@@ -188,8 +199,14 @@ namespace xcoin
     static void
     connect_orphans(string& hash) 
     {
+
+       auto console = spdlog::get("console");
+       auto err = spdlog::get("stderr");
        vector<string> work_q;
        work_q.push_back(hash);
+
+       debug_maps("Orphan Maps", g_orphan_prev_blocks );
+
 
        for (int i = 0; i<work_q.size(); i++) {
             string prev_hash = work_q[i];
@@ -199,10 +216,12 @@ namespace xcoin
                     itr++) {
                 Block* orphan_blk = (*itr).second;
 
+                err->warn("[Miner - connect_orphans] Got Previous Hash: {}", prev_hash);
                 /*  Orphan now finds a parent */
                 if(orphan_blk->accept_block()) {
                     /*  Some other orphans might depend on it */
                     work_q.push_back(orphan_blk->get_hash());
+                    err->warn("[Miner - connect_orphans] Connect Orphans: {}", orphan_blk->to_string());
                 }
 
                 /*  Delete the orphan hash even if it is not deleted */
@@ -269,5 +288,15 @@ namespace xcoin
     {
     }
 
+
+    void debug_maps(string name, multimap<string, Block*> map) {
+        auto console = spdlog::get("console");
+        
+        printf("-------------%s------------\n", name.c_str());
+
+        for(auto itr = map.begin(); itr != map.end(); ++itr) {
+            printf("[K : %s] [V: %s]\n", itr->first.c_str(), itr->second->to_short_string().c_str());
+        }
+    }
 
 }

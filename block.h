@@ -94,6 +94,13 @@ namespace xcoin
                 return ss.str();
             }
 
+            string to_short_string() const {
+                char buf[512];
+                sprintf(buf, "[h:%d - hash:%s - miner:%s]", 
+                        index_,  get_hash().substr(0, 6).c_str(), miner_.c_str());
+                return string(buf);
+            }
+
 
             friend ostream& operator<<(ostream &strm, const Block&);
 

@@ -1,0 +1,2 @@
+#! /bin/bash
+for d in shadow.data/hosts/peer*; do grep "$1" ${d}/* ; done

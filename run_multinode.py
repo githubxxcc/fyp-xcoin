@@ -45,7 +45,7 @@ def setup_multiple_node_data(node_num):
         file.close()
 
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):
-    os.system("shadow %s" % ("./example_multiple_generated.xml"))
+    os.system("shadow -l warning %s" % ("./example_multiple_generated.xml"))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating shadow config xml and running shadow experiments.' )

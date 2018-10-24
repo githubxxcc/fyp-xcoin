@@ -14,6 +14,7 @@ namespace xcoin {
 
     typedef struct _Server Server;
     class MinerState;
+    class PingState;
     class Client;
 
 
@@ -48,6 +49,9 @@ namespace xcoin {
         pthread_t miner_;
         struct event_base * miner_base_;
         MinerState * miner_state_;
+        
+        /*  Ping State  */
+        PingState * ping_state_;
 
         /*  Communication Sockets to Miner */
         struct bufferevent * r_bev_;
@@ -55,6 +59,7 @@ namespace xcoin {
 
         Client* connect_peer(PeerAddr &);
         void broadcast_block(string);
+        void broadcast_ping(int64_t, int);
         void add_client_in(Client*);
         void add_client_out(Client*);
     };
@@ -78,8 +83,12 @@ namespace xcoin {
             bool find_hash(Block*, uint32_t) const;
     };
 
+    class PingState {
+        public:
+            bool received_;
+    };
 
-
+    
 }
 
 #endif

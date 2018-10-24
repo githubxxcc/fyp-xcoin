@@ -64,6 +64,7 @@ namespace b_po = boost::program_options;
 static void parse_cmd(int, char**);
 void buf_err_cb(struct bufferevent *bev, short what, void *arg);
 int create_miner();
+void init_ping();
 static void check_result(bool, int, const char*);
 static stack<int> MINE_BLOCKS_Q;
 
@@ -74,6 +75,7 @@ XState* SYS_STATE;
 static int N_NEXT_BLOCK = -1;
 static int N_INIT_BLOCK = 0;
 static int N_CLIENT_NEXT_BLOCK = 10;
+static bool G_RECEIVED = false;
 //static bool G_DO_MINE = true;
 
 static pthread_cond_t COND = PTHREAD_COND_INITIALIZER;
@@ -102,6 +104,32 @@ static pthread_mutex_t MUTEX = PTHREAD_MUTEX_INITIALIZER;
 //    }
 //}
 
+void init_ping() 
+{
+    auto console = spdlog::get("console");
+    auto nwk = spdlog::get("nwk");
+    /*  Create a message */
+    int64_t start_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    int hop = 0;
+    
+    console->info("[ init_ping ] Start: {}, Hop: {}", start_us, hop);
+
+    SYS_STATE->broadcast_ping(start_us, hop);
+    
+    /*  Broadcast to outgoing peers */
+   // for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
+   //     auto clt = itr->second;
+
+   //     if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
+   //         spdlog->warn("[Main - init_ping] Failed");
+   //     } else {
+   //         nwk->info("[Main - init_ping] Sent to {}", itr->first); 
+   //     }
+   // }
+}
+
+
+
 void buf_read_cb(struct bufferevent *bev, void *arg )
 {
     XState* state = SYS_STATE;
@@ -109,42 +137,74 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
     stringstream ss;
     auto console = spdlog::get("console");
     auto err = spdlog::get("stderr");
+
     for(;;) {
+        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
-        if(n <= 0) {
-            break;
-        }
-        spdlog::get("network")->info("[Main - read_network] Read: {}", data);
+        if(n <= 0) break;
 
-        /*  Append to the stack */
         ss << data;
+        while(ss.rdbuf()->in_avail()) {
+            int64_t start_us;
+            int hop;
 
-        /*  Process the block here */
-        auto block = Block::deserialize(ss);
+            ss >> start_us >> hop;
+            console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - start_us, hop);
 
-        console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
+            //if(!state->ping_state_->received_) {
+            if(!G_RECEIVED){
+                //Send to peers
+                state->broadcast_ping(start_us, hop+1);
+            }
 
-        if(block.process_block()) {
-            /*  Reset the mining */
-            console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
-            state->miner_state_->reset_mining();
-
-            /*  Relay the block to others if needed*/
-            state->broadcast_block(ss.str());
-        } else {
-            err->warn("[Miner - buf_read_cb] Process blocked failed");
+            //state->ping_state_->received_ = true;
+            G_RECEIVED = true;
         }
-
-        ss.clear();
-
-        /*  Pass next miner block, call miner_on_read */
-        //string blk_str = ss.str();
-        //ss.clear();
-        //if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
-        //    spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
-        //}
     }
+   // for(;;) {
+   //     char data[8192] = {0};
+   //     n = bufferevent_read(bev, data, sizeof(data));
+   //     if(n <= 0) {
+   //         break;
+   //     }
+   //     spdlog::get("network")->info("[Main - read_network] Read: {}", data);
+
+   //     /*  Append to the stack */
+   //     ss << data;
+
+   //     /*  Process the block here */
+   //     while() {
+   //         int data_size;
+   //         ss >> data_size;
+   //         vector<char> res(data_size);
+   //         ss.read(&res[0], data_size);
+   //         string str = string(res.begin(), res.begin()+data_size);
+   //         auto block = Block::deserialize(stringstream(str));
+   //         console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
+
+   //         if(block.process_block()) {
+   //             /*  Reset the mining */
+   //             console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
+   //             state->miner_state_->reset_mining();
+
+   //             /*  Relay the block to others if needed*/
+   //             state->broadcast_block(ss.str());
+   //         } else {
+   //             err->warn("[Miner - buf_read_cb] Process blocked failed");
+   //         }
+   //     }
+
+
+   //     ss.clear();
+
+   //     /*  Pass next miner block, call miner_on_read */
+   //     //string blk_str = ss.str();
+   //     //ss.clear();
+   //     //if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
+   //     //    spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
+   //     //}
+   // }
 }
 
 void error_cb(struct bufferevent *bev, short events, void *aux)
@@ -351,6 +411,7 @@ main_on_read(struct bufferevent *bev, void *arg)
         /*  Broadcast to peers */
         ss << data;
         state->broadcast_block(ss.str());
+        state->miner_state_->reset_mining();
     }
 }
 
@@ -420,7 +481,6 @@ init()
 
     /*  FIXME: check input */
     int res; 
-    srand(time(NULL));
     
     /* Init State relevant info */
     XState* state = new XState(); 
@@ -447,14 +507,20 @@ init()
         nt_log->info("[Main - init] Connected peer {}\n", client->server_host_name_);
     }
 
-    /*  Set up mining thread */
-    create_miner();
+    ///*  Set up mining thread */
+    //create_miner();
+    
+    ///* Set up the chain genesis block */
+    //Block genesis = Block::genesis();
+    //genesis.add_to_chain();
+    //console->info("[Main - init] Genesis Block Hash: {}", genesis.get_hash());
+    //debug_chains();
 
-    /* Set up the chain genesis block */
-    Block genesis = Block::genesis();
-    genesis.add_to_chain();
-    console->info("[Main - init] Genesis Block Hash: {}", genesis.get_hash());
-    debug_chains();
+    /*  Set up ping */
+    if(state->my_addr_ == "peer0") {
+        init_ping();
+    }
+
 
     /*  TODO: check failure */
     return state;
@@ -542,7 +608,7 @@ create_miner()
     /*  Setup distribution */
     auto seed = hash<string>{}(state->my_addr_);
     miner_state->engine_ = default_random_engine(seed);
-    miner_state->dis_ = exponential_distribution<double>(1/600.0);
+    miner_state->dis_ = exponential_distribution<double>(1/10.0);
 
     /*  Create the miner thread  */
     pthread_create(&state->miner_, NULL, mine, (void*) state);
@@ -571,7 +637,7 @@ void MinerState::reset_mining()
 
     /* Cancel timer */
     assert(mine_ev_ != NULL);
-    assert(evtimer_pending(mine_ev_, NULL));
+    //assert(evtimer_pending(mine_ev_, NULL));
     if (event_del(mine_ev_) != 0) {
         spdlog::get("stderr")->warn("[MINER - reset_mining] event_del faield");
     }
@@ -588,7 +654,9 @@ void MinerState::reset_mining()
 void XState::broadcast_block(string data) 
 {
     auto err = spdlog::get("stderr");
-    
+   
+    /*  Pad the data, so that multiple blocks in buffer can be read */
+    data.append("*");
     for(auto itr = out_clients_.begin() ; itr != out_clients_.end(); ++itr) {
         auto clt = itr->second; 
 
@@ -606,7 +674,23 @@ void XState::broadcast_block(string data)
 
 }
 
+void XState::broadcast_ping(int64_t start, int hop) 
+{
+    stringstream ss;
+    ss << start << " " << hop;
+    string data = ss.str();
+    auto nwk = spdlog::get("network");
+    /*  Broadcast to outgoing peers */
+    for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
+        auto clt = itr->second;
 
+        if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
+            nwk->warn("[Main - broadcast_ping] Failed");
+        } else {
+            nwk->info("[Main - broadcast_ping] Sent to {}", itr->first); 
+        }
+    }
+}
 
 Client* 
 XState::connect_peer(PeerAddr& peer)
@@ -709,3 +793,6 @@ parse_cmd(int argc, char* argv[])
     SYS_CONFIG = parse_config(input_data_dir);
     //SYS_CONFIG.print();
 }
+
+
+
