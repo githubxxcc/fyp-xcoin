@@ -10,7 +10,7 @@
 
 namespace xcoin {
     /*  Constants  */ 
-    constexpr int MINE_BASE_INTERVAL = 50; /*  Seconds  */
+    constexpr int MINE_VAR_INTERVAL = 5; /*  Seconds  */
 
     typedef struct _Server Server;
     class MinerState;
@@ -69,6 +69,8 @@ namespace xcoin {
             int time_;
             int cur_block_;
             string name_;
+            exponential_distribution<double> dis_;
+            default_random_engine engine_;
 
             void reset_mining();
             bool has_new_block() const;

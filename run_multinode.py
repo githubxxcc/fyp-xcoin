@@ -31,7 +31,7 @@ def setup_multiple_node_data(node_num):
         file = open("./data/peer%d.toml" % i, "w")
         file.write('my-addr = "peer%d"\n' % i)
         file.write('my-port = %d\n' % (BASE_PORT+i))
-        file.write('miner-timeout = 30\n\n')
+        file.write('miner-timeout = %d\n\n'% (30))
 
         # Write peers information
         file.write('[[peers]]\n')

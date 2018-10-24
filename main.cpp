@@ -8,6 +8,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+//for exp distribution
+#include <random>
+
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -393,8 +396,10 @@ mine(void* aux)
     struct timeval tp;
     
     /*  Setup MIning Event */
-    struct timeval tv { 5, 0};
-
+    //struct timeval tv { my_state->time_, 0};
+    double num = my_state->dis_(my_state->engine_);
+    console->debug("[Miner - mine] Miner next value {}", num);
+    struct timeval tv { (int)num, 0};
     struct event *mine_ev = event_new(my_state->evbase_, -1, EV_PERSIST  , on_mine, my_state);
     evtimer_add(mine_ev, &tv);
     my_state->mine_ev_ = mine_ev;
@@ -422,6 +427,7 @@ init()
     assert(state);
     SYS_STATE = state;
     state->evbase_ = event_base_new();
+    /*  Setup network info */
     state->my_port_ = SYS_CONFIG.my_port;
     state->my_addr_ = SYS_CONFIG.my_addr;
 
@@ -465,6 +471,8 @@ int main(int argc, char*argv[])
     console->info("Starting");
     /*  Read in arguments  */
     parse_cmd(argc, argv);
+
+
 
     /*  Init randome seed */
     init();
@@ -531,6 +539,11 @@ create_miner()
     struct event* sig_ev = evsignal_new(state->evbase_, SIGINT, on_kill, state);
     event_add(sig_ev, NULL);
 
+    /*  Setup distribution */
+    auto seed = hash<string>{}(state->my_addr_);
+    miner_state->engine_ = default_random_engine(seed);
+    miner_state->dis_ = exponential_distribution<double>(1/600.0);
+
     /*  Create the miner thread  */
     pthread_create(&state->miner_, NULL, mine, (void*) state);
     spdlog::get("console")->info("Created miner\n");
@@ -564,7 +577,10 @@ void MinerState::reset_mining()
     }
     
     /* Random sleep time */
-    struct timeval tv { rand() % MINE_BASE_INTERVAL + this->time_, 0};
+    double num = dis_(engine_);
+    struct timeval tv {(int)num, 0};
+    spdlog::get("console")->debug("[Miner - mine] Miner next value {}", num);
+
     mine_ev_ = event_new(evbase_, -1, EV_PERSIST , on_mine, this);
     event_add(mine_ev_, &tv);
 }
