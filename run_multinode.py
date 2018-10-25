@@ -7,7 +7,7 @@ from scipy.sparse import *
 from scipy import *
 
 
-PEER_CNT = 2
+PEER_CNT = 1
 
 def generate_graph(node_num, peer_cnt):
     out_peer_cnt = peer_cnt
@@ -44,7 +44,12 @@ def connect_graph(node_num, peer_cnt):
     print(graph)
     return graph
 
+def report_stat(graph, node_num):
+    dis, y = csgraph.dijkstra(graph, return_predecessors=True, unweighted=True)
+    avg_dis = dis.sum() / (node_num * (node_num-1))
 
+    # Avg_dis, Max_dis
+    print("%f, %d" % (avg_dis, dis.max()))
 
 
 def setup_multiple_node_xml(node_num):
@@ -101,10 +106,12 @@ if __name__ == '__main__':
         args.workernum = 1
 
     graph = connect_graph(args.nodenum, PEER_CNT)
-    setup_multiple_node_xml(args.nodenum)
-    setup_multiple_node_data(args.nodenum, graph)
-    run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
+    # setup_multiple_node_xml(args.nodenum)
+    # setup_multiple_node_data(args.nodenum, graph)
+    # run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
 
     print(graph)
+
+    report_stat(graph, args.nodenum)
 
 
