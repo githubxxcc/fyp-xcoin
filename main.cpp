@@ -150,14 +150,15 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
             int hop;
 
             ss >> start_us >> hop;
-            console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - start_us, hop);
 
             //if(!state->ping_state_->received_) {
             if(!G_RECEIVED){
                 //Send to peers
+                console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - start_us, hop+1);
                 state->broadcast_ping(start_us, hop+1);
+            } else {
+                console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - start_us, hop);
             }
-
             //state->ping_state_->received_ = true;
             G_RECEIVED = true;
         }

@@ -2,6 +2,50 @@ import os
 import argparse
 import lxml.etree as ET
 from subprocess import check_output
+from random import randint
+from scipy.sparse import *
+from scipy import *
+
+
+PEER_CNT = 2
+
+def generate_graph(node_num, peer_cnt):
+    out_peer_cnt = peer_cnt
+
+    edges = []
+    rows = []
+    cols = []
+
+    for node in range(node_num):
+        # Include yourself
+        peers = [node]
+        for x in range(out_peer_cnt):
+            rows.append(node)
+
+            # Find a peer other than self and existing peers
+            while True:
+                peer = randint(0, node_num-1)
+                if peer not in peers:
+                    break
+
+            cols.append(peer)
+            edges.append(1)
+            peers.append(peer)
+
+
+    graph = csr_matrix((edges, (rows, cols)), shape=(node_num, node_num))
+    return graph
+
+def connect_graph(node_num, peer_cnt):
+    x = -1
+    while x != 1:
+        graph = generate_graph(node_num, peer_cnt)
+        x, y  = csgraph.connected_components(graph, True, 'strong')
+    print(graph)
+    return graph
+
+
+
 
 def setup_multiple_node_xml(node_num):
     baseline_xml = "./example.xml"
@@ -16,6 +60,7 @@ def setup_multiple_node_xml(node_num):
     for node in shadow.findall('host'):
         shadow.remove(node)
 
+    #  Is Clean XML
     for i in range(node_num):
         node_id = "peer%d" % (i)
         node = ET.SubElement(shadow, "host", id=node_id)
@@ -24,24 +69,21 @@ def setup_multiple_node_xml(node_num):
     tree.write(new_xml, pretty_print=True)
 
 # Setup up TOML
-def setup_multiple_node_data(node_num):
+def setup_multiple_node_data(node_num, graph):
     os.system("rm -rf ./data/*")
     BASE_PORT = 50000
     for i in range(node_num):
+        peers = graph[i, :].nonzero()[1]
         file = open("./data/peer%d.toml" % i, "w")
         file.write('my-addr = "peer%d"\n' % i)
         file.write('my-port = %d\n' % (BASE_PORT+i))
         file.write('miner-timeout = %d\n\n'% (30))
 
         # Write peers information
-        file.write('[[peers]]\n')
-        file.write('peer-host = "peer%d"\n' % ((i+1) % node_num))
-        file.write('peer-port = %d\n' % (BASE_PORT + (i+1)%node_num))
-
-        file.write('[[peers]]\n')
-        file.write('peer-host = "peer%d"\n' % ((i+2) % node_num))
-        file.write('peer-port = %d\n' % (BASE_PORT + (i+2)%node_num))
-
+        for peer in peers:
+            file.write('[[peers]]\n')
+            file.write('peer-host = "peer%d"\n' % peer)
+            file.write('peer-port = %d\n' % (BASE_PORT + peer))
         file.close()
 
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):
@@ -58,8 +100,11 @@ if __name__ == '__main__':
     if args.workernum == None:
         args.workernum = 1
 
+    graph = connect_graph(args.nodenum, PEER_CNT)
     setup_multiple_node_xml(args.nodenum)
-    setup_multiple_node_data(args.nodenum)
+    setup_multiple_node_data(args.nodenum, graph)
     run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
+
+    print(graph)
 
 
