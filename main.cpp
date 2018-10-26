@@ -49,6 +49,7 @@
 #include "main.h"
 #include "util.h"
 #include "block.h"
+#include "net.h"
 
 
 using namespace std;
@@ -110,11 +111,11 @@ void init_ping()
     auto nwk = spdlog::get("nwk");
     /*  Create a message */
     int64_t start_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    int hop = 0;
     
-    console->info("[ init_ping ] Start: {}, Hop: {}", start_us, hop);
+    console->info("[ init_ping ] Start: {}, Hop: {}", start_us, 1);
 
-    SYS_STATE->broadcast_ping(start_us, hop);
+    SYS_STATE->broadcast_ping(start_us, 1);
+    G_RECEIVED = true;
     
     /*  Broadcast to outgoing peers */
    // for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
@@ -139,25 +140,28 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
     auto err = spdlog::get("stderr");
 
     for(;;) {
-        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         char data[8192] = {0};
         n = bufferevent_read(bev, data, sizeof(data));
         if(n <= 0) break;
 
+        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        console->debug("[Main - buf_read_cb] Deserialziing Data: {}", data);
         ss << data;
         while(ss.rdbuf()->in_avail()) {
             int64_t start_us;
             int hop;
 
-            ss >> start_us >> hop;
+            //ss >> start_us >> hop;
+
+            PingMsg msg = PingMsg::deserialize(ss);
 
             //if(!state->ping_state_->received_) {
             if(!G_RECEIVED){
                 //Send to peers
-                console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - start_us, hop+1);
-                state->broadcast_ping(start_us, hop+1);
+                console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - msg.start_us, msg.hop+1);
+                state->broadcast_ping(msg.start_us, msg.hop+1);
             } else {
-                console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - start_us, hop);
+                console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - msg.start_us, msg.hop);
             }
             //state->ping_state_->received_ = true;
             G_RECEIVED = true;
@@ -491,6 +495,7 @@ init()
     /*  Setup network info */
     state->my_port_ = SYS_CONFIG.my_port;
     state->my_addr_ = SYS_CONFIG.my_addr;
+    state->msg_size_ = SYS_CONFIG.msg_size;
 
     
     
@@ -677,10 +682,13 @@ void XState::broadcast_block(string data)
 
 void XState::broadcast_ping(int64_t start, int hop) 
 {
-    stringstream ss;
-    ss << start << " " << hop;
-    string data = ss.str();
     auto nwk = spdlog::get("network");
+    
+    /*  Prepare Ping message  */
+    PingMsg msg(start, hop, this->msg_size_);
+    string data = msg.save();
+    nwk->info("[Main - broadcast_ping] Msg string: {}", msg.to_string());
+    nwk->info("[Main - broadcast_ping] Sending Data: {}", data);
     /*  Broadcast to outgoing peers */
     for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
         auto clt = itr->second;
@@ -688,7 +696,7 @@ void XState::broadcast_ping(int64_t start, int hop)
         if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
             nwk->warn("[Main - broadcast_ping] Failed");
         } else {
-            nwk->info("[Main - broadcast_ping] Sent to {}", itr->first); 
+            nwk->info("[Main - broadcast_ping] Sent to {}, Hop: {}", itr->first, hop); 
         }
     }
 }

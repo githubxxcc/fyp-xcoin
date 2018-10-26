@@ -52,6 +52,7 @@ namespace xcoin {
         
         /*  Ping State  */
         PingState * ping_state_;
+        int msg_size_;
 
         /*  Communication Sockets to Miner */
         struct bufferevent * r_bev_;

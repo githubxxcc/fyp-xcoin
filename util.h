@@ -33,6 +33,7 @@ namespace xcoin
             int my_port;
             string my_addr;
             int miner_timeout;
+            int msg_size;
 
         void print() {
             printf("----------System Config-------\n");
@@ -43,6 +44,7 @@ namespace xcoin
 
             printf("My Port :       %d\n", my_port);
             printf("Miner Timeout : %d\n", miner_timeout);
+            printf("Msg Size :      %d KB\n", msg_size);
         }
     };
 

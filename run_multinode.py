@@ -46,7 +46,7 @@ def generate_graph(node_num, peer_num, const_in_deg=False):
 def connect_graph(node_num, peer_cnt, const_out_deg=True):
     graph = generate_graph(node_num, peer_cnt)
     num_cmpnt, cmpnts  = csgraph.connected_components(graph, True, 'strong')
-
+    # print(graph)
     temp_graph = graph.tolil(False)
     while num_cmpnt != 1:
         # Union set of nods in set 0
@@ -70,18 +70,23 @@ def connect_graph(node_num, peer_cnt, const_out_deg=True):
                 # Add node into the 0 set
                 temp_graph[v,u] = 0
                 temp_graph[v,node] = 1
-                temp_graph[node, v] = 1
+                temp_graph[node, u] = 1
 
         num_cmpnt, cmpnts  = csgraph.connected_components(temp_graph, True, 'strong')
-    print(temp_graph.todense())
+    #print(temp_graph.todense())
     return temp_graph
 
 def report_stat(graph, node_num):
     dis, y = csgraph.dijkstra(graph, return_predecessors=True, unweighted=True)
     avg_dis = dis.sum() / (node_num * (node_num-1))
+    num_edges = graph.count_nonzero()
 
     # Avg_dis, Max_dis
-    print("%f, %d" % (avg_dis, dis.max()))
+    print("%f, %d, %d"
+            % ( avg_dis,
+                dis.max(),
+                num_edges
+                ))
 
 
 def setup_multiple_node_xml(node_num):
@@ -106,7 +111,7 @@ def setup_multiple_node_xml(node_num):
     tree.write(new_xml, pretty_print=True)
 
 # Setup up TOML
-def setup_multiple_node_data(node_num, graph):
+def setup_multiple_node_data(node_num, graph, args):
     os.system("rm -rf ./data/*")
     BASE_PORT = 50000
     for i in range(node_num):
@@ -114,6 +119,7 @@ def setup_multiple_node_data(node_num, graph):
         file = open("./data/peer%d.toml" % i, "w")
         file.write('my-addr = "peer%d"\n' % i)
         file.write('my-port = %d\n' % (BASE_PORT+i))
+        file.write("msg-size = %d\n" % args.msgsize)
         file.write('miner-timeout = %d\n\n'% (30))
 
         # Write peers information
@@ -124,11 +130,12 @@ def setup_multiple_node_data(node_num, graph):
         file.close()
 
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):
-    os.system("shadow -l warning %s" % ("./example_multiple_generated.xml"))
+    os.system("shadow -l critical %s" % ("./example_multiple_generated.xml"))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating shadow config xml and running shadow experiments.' )
     parser.add_argument("--nodenum", type=int, help="Number of bitcoin nodes for experiment.")
+    parser.add_argument("--msgsize", type=int, help="Size of msg.")
     parser.add_argument("--workernum", type=int, help="Number of shadow workers for the simulation. Multiple worker can accelerate the speed of the simulation.")
 
     args = parser.parse_args()
@@ -136,13 +143,15 @@ if __name__ == '__main__':
         args.nodenum = 4
     if args.workernum == None:
         args.workernum = 1
+    if args.msgsize == None:
+        args.msgsize = 4
 
     graph = connect_graph(args.nodenum, PEER_CNT, const_out_deg=True)
     setup_multiple_node_xml(args.nodenum)
-    setup_multiple_node_data(args.nodenum, graph)
-    # run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
+    setup_multiple_node_data(args.nodenum, graph, args)
+    run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
 
-    #print(graph)
+    print(graph)
 
     report_stat(graph, args.nodenum)
 

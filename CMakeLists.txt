@@ -16,11 +16,11 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${HEADERS_INCLUDE})
 
 ## create and install a shared library that can plug into shadow add_shadow_plugin(shadow-plugin-hello hello.c)
-add_shadow_plugin(shadow-plugin-xcoin main.cpp util.cpp util.h block.h block.cpp ${HEADERS_INCLUDE})
+add_shadow_plugin(shadow-plugin-xcoin main.cpp util.cpp util.h block.h block.cpp  net.h ${HEADERS_INCLUDE})
 target_link_libraries(shadow-plugin-xcoin -levent -pthread ${OPENSSL_LIB} ${Boost_LIBRARIES})
 install(TARGETS shadow-plugin-xcoin DESTINATION plugins)
 
 ## create and install an executable that can run outside of shadow
-add_executable(xcoin main.cpp util.cpp util.h block.h block.cpp ${HEADERS_INCLUDE})
+add_executable(xcoin main.cpp util.cpp util.h block.h block.cpp net.h ${HEADERS_INCLUDE})
 target_link_libraries(xcoin -levent -pthread ${Boost_LIBRARIES} -lssl -lcrypto)
 install(TARGETS xcoin DESTINATION bin)
