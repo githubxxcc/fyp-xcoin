@@ -1,48 +1,80 @@
 import os
 import argparse
 import lxml.etree as ET
+import numpy as np
 from subprocess import check_output
 from random import randint
 from scipy.sparse import *
 from scipy import *
 
 
-PEER_CNT = 1
+PEER_CNT = 2
 
-def generate_graph(node_num, peer_cnt):
-    out_peer_cnt = peer_cnt
+# Generate graph
+def generate_graph(node_num, peer_num, const_in_deg=False):
+    out_peer_cnt =peer_num
 
     edges = []
     rows = []
     cols = []
+    peer_cnt = np.zeros((node_num, ), dtype=int)
 
     for node in range(node_num):
-        # Include yourself
-        peers = [node]
+        # Exclude yourself
+        node_set = range(0, node_num)
+        node_set.remove(node)
         for x in range(out_peer_cnt):
-            rows.append(node)
-
+            # FIXME: this is for keeping the in_degree const
             # Find a peer other than self and existing peers
-            while True:
-                peer = randint(0, node_num-1)
-                if peer not in peers:
-                    break
+           #  while True:
+           #      peer = random.choice(node_set)
+           #      if not const_in_deg or peer_cnt[peer] < out_peer_cnt:
+           #          break
+           #      node_set.remove(peer)
 
-            cols.append(peer)
+            to_peer = random.choice(node_set)
+            peer_cnt[to_peer]+=1
+            rows.append(node)
+            cols.append(to_peer)
             edges.append(1)
-            peers.append(peer)
-
+            node_set.remove(to_peer)
 
     graph = csr_matrix((edges, (rows, cols)), shape=(node_num, node_num))
+    # print(graph)
     return graph
 
-def connect_graph(node_num, peer_cnt):
-    x = -1
-    while x != 1:
-        graph = generate_graph(node_num, peer_cnt)
-        x, y  = csgraph.connected_components(graph, True, 'strong')
-    print(graph)
-    return graph
+def connect_graph(node_num, peer_cnt, const_out_deg=True):
+    graph = generate_graph(node_num, peer_cnt)
+    num_cmpnt, cmpnts  = csgraph.connected_components(graph, True, 'strong')
+
+    temp_graph = graph.tolil(False)
+    while num_cmpnt != 1:
+        # Union set of nods in set 0
+        base_set = np.where(cmpnts == 0)[0]
+        for c_id in range(1, num_cmpnt):
+            # ndoes = component with c_id
+            nodes = np.where(cmpnts == c_id)[0]
+            for node in nodes:
+                # Set one of node's peer to 0 => maintain the out degree
+                if const_out_deg:
+                    node_peers = temp_graph.getrow(node).nonzero()[1]
+                    peer = random.choice(node_peers)
+                    temp_graph[node, peer] = 0
+
+                # one of the node in 0
+                v = random.choice(base_set)
+                edges = temp_graph.getrow(v)
+                us = edges.nonzero()[1]
+                u = random.choice(us)
+
+                # Add node into the 0 set
+                temp_graph[v,u] = 0
+                temp_graph[v,node] = 1
+                temp_graph[node, v] = 1
+
+        num_cmpnt, cmpnts  = csgraph.connected_components(temp_graph, True, 'strong')
+    print(temp_graph.todense())
+    return temp_graph
 
 def report_stat(graph, node_num):
     dis, y = csgraph.dijkstra(graph, return_predecessors=True, unweighted=True)
@@ -105,12 +137,12 @@ if __name__ == '__main__':
     if args.workernum == None:
         args.workernum = 1
 
-    graph = connect_graph(args.nodenum, PEER_CNT)
-    # setup_multiple_node_xml(args.nodenum)
-    # setup_multiple_node_data(args.nodenum, graph)
+    graph = connect_graph(args.nodenum, PEER_CNT, const_out_deg=True)
+    setup_multiple_node_xml(args.nodenum)
+    setup_multiple_node_data(args.nodenum, graph)
     # run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
 
-    print(graph)
+    #print(graph)
 
     report_stat(graph, args.nodenum)
 

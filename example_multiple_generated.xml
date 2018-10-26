@@ -45,4 +45,52 @@
   <host id="peer3">
     <process arguments="--input-dir=./data/peer3.toml" plugin="xcoin" starttime="1"/>
   </host>
+  <host id="peer4">
+    <process arguments="--input-dir=./data/peer4.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer5">
+    <process arguments="--input-dir=./data/peer5.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer6">
+    <process arguments="--input-dir=./data/peer6.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer7">
+    <process arguments="--input-dir=./data/peer7.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer8">
+    <process arguments="--input-dir=./data/peer8.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer9">
+    <process arguments="--input-dir=./data/peer9.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer10">
+    <process arguments="--input-dir=./data/peer10.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer11">
+    <process arguments="--input-dir=./data/peer11.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer12">
+    <process arguments="--input-dir=./data/peer12.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer13">
+    <process arguments="--input-dir=./data/peer13.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer14">
+    <process arguments="--input-dir=./data/peer14.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer15">
+    <process arguments="--input-dir=./data/peer15.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer16">
+    <process arguments="--input-dir=./data/peer16.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer17">
+    <process arguments="--input-dir=./data/peer17.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer18">
+    <process arguments="--input-dir=./data/peer18.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer19">
+    <process arguments="--input-dir=./data/peer19.toml" plugin="xcoin" starttime="1"/>
+  </host>
 </shadow>
