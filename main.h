@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <arpa/inet.h>
+
 #include "block.h"
 #include "util.h"
 #include <boost/program_options.hpp>
@@ -26,8 +27,17 @@ namespace xcoin {
     public:
         int sd_;
         string server_host_name_;
+        string server_ip_str_;
         in_addr_t server_ip_;
         struct bufferevent * buf_ev_;
+        size_t to_read_;
+        stringstream buf_ss_;
+
+        Client(){
+            sd_ = 0;
+            to_read_ =0;
+        }
+
     };
 
 

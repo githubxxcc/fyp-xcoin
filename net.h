@@ -8,14 +8,30 @@
 
 
 namespace xcoin {
+    constexpr int32_t MSG_TYPE_PING = 1;
+
+    constexpr int MSG_HEADER_SIZE = 8; /*  4 + 4  */
+
+
     class MsgHeader;
     class PingMsg;
 
     class MsgHeader {
         public:
-            int type;
-            int size;
+            int32_t type;
+            int32_t size;
         
+        MsgHeader(){}
+
+        MsgHeader(int32_t t, int32_t s) :type(t), size(s) {}
+
+        MsgHeader(char buf[MSG_HEADER_SIZE]) {
+            type = 0;
+            size = 0;
+            memcpy(buf, &type, sizeof(type));
+            memcpy(buf+sizeof(type), &size, sizeof(size));
+        }
+
         MsgHeader(string & s) {
             stringstream ss(s);
             ss >> type >> size;
@@ -25,6 +41,38 @@ namespace xcoin {
             stringstream ss;
             ss << type << " " << size;
             return ss.str();
+        }
+
+        void save(char buf[MSG_HEADER_SIZE]) {
+            stringstream ss;
+            memcpy(buf, &type, 4);
+            memcpy(buf+4, &size, 4);
+        }
+
+        static MsgHeader restore(stringstream &ss) 
+        {
+            stringstream convert;
+            MsgHeader header;
+            char buf[32]= {0};
+            ss.read(buf, 4);
+            convert << buf;
+            printf("buf: %s\n", buf);
+            convert >> header.type;
+    
+            ss.read(buf, 4);
+            convert << buf;
+            printf("buf: %s\n", buf);
+            convert >> header.size;
+
+            return header;
+        }
+
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int version) 
+        {
+            ar  & type;
+            ar  & size;
         }
 
         
@@ -56,7 +104,7 @@ namespace xcoin {
         string to_string() {
             stringstream ss;
             ss  << "Start time: " << start_us   << "\t"
-                << "Data:       " << data       << "\t" 
+                << "Data:       " << data.substr(0, 8)<< "\t" 
                 << "Hop :       " << hop        << "\n";
 
             return ss.str();

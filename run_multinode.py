@@ -8,7 +8,6 @@ from scipy.sparse import *
 from scipy import *
 
 
-PEER_CNT = 2
 
 # Generate graph
 def generate_graph(node_num, peer_num, const_in_deg=False):
@@ -136,6 +135,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating shadow config xml and running shadow experiments.' )
     parser.add_argument("--nodenum", type=int, help="Number of bitcoin nodes for experiment.")
     parser.add_argument("--msgsize", type=int, help="Size of msg.")
+    parser.add_argument("--peercnt", type=int, help="Number of peers.")
     parser.add_argument("--workernum", type=int, help="Number of shadow workers for the simulation. Multiple worker can accelerate the speed of the simulation.")
 
     args = parser.parse_args()
@@ -145,8 +145,10 @@ if __name__ == '__main__':
         args.workernum = 1
     if args.msgsize == None:
         args.msgsize = 4
+    if args.peercnt == None:
+        args.peercnt = 1
 
-    graph = connect_graph(args.nodenum, PEER_CNT, const_out_deg=True)
+    graph = connect_graph(args.nodenum, args.peercnt, const_out_deg=True)
     setup_multiple_node_xml(args.nodenum)
     setup_multiple_node_data(args.nodenum, graph, args)
     run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)

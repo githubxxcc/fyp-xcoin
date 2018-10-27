@@ -111,22 +111,22 @@ void init_ping()
     auto nwk = spdlog::get("nwk");
     /*  Create a message */
     int64_t start_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    
+
     console->info("[ init_ping ] Start: {}, Hop: {}", start_us, 1);
 
     SYS_STATE->broadcast_ping(start_us, 1);
     G_RECEIVED = true;
-    
-    /*  Broadcast to outgoing peers */
-   // for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
-   //     auto clt = itr->second;
 
-   //     if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
-   //         spdlog->warn("[Main - init_ping] Failed");
-   //     } else {
-   //         nwk->info("[Main - init_ping] Sent to {}", itr->first); 
-   //     }
-   // }
+    /*  Broadcast to outgoing peers */
+    // for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
+    //     auto clt = itr->second;
+
+    //     if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
+    //         spdlog->warn("[Main - init_ping] Failed");
+    //     } else {
+    //         nwk->info("[Main - init_ping] Sent to {}", itr->first); 
+    //     }
+    // }
 }
 
 
@@ -134,82 +134,98 @@ void init_ping()
 void buf_read_cb(struct bufferevent *bev, void *arg )
 {
     XState* state = SYS_STATE;
-    size_t n;
+    Client* client = static_cast<Client*>(arg);
     stringstream ss;
     auto console = spdlog::get("console");
     auto err = spdlog::get("stderr");
 
-    for(;;) {
-        char data[8192] = {0};
-        n = bufferevent_read(bev, data, sizeof(data));
-        if(n <= 0) break;
+    MsgHeader header;
+    char header_buf[128] = {0};
+    struct evbuffer* ev_buf = bufferevent_get_input(bev);
+    int n =  evbuffer_get_length(ev_buf);
+    console->debug("[Main - buf_read_cb] Having data: {}",n);
 
-        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        console->debug("[Main - buf_read_cb] Deserialziing Data: {}", data);
-        ss << data;
-        while(ss.rdbuf()->in_avail()) {
-            int64_t start_us;
-            int hop;
-
-            //ss >> start_us >> hop;
-
-            PingMsg msg = PingMsg::deserialize(ss);
-
-            //if(!state->ping_state_->received_) {
-            if(!G_RECEIVED){
-                //Send to peers
-                console->info("[Main - buf_read_cb] Received {}, Hop {}", end_us - msg.start_us, msg.hop+1);
-                state->broadcast_ping(msg.start_us, msg.hop+1);
-            } else {
-                console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - msg.start_us, msg.hop);
-            }
-            //state->ping_state_->received_ = true;
-            G_RECEIVED = true;
+    if(client->to_read_ == 0) {
+        /*  Start reading a new msg */
+        evbuffer_remove(ev_buf, &header, sizeof(header));
+        console->info("[Main buf_read_cb] MsgHeader : {}", header.to_string());
+        
+        /*  Size of msg data to be read */
+        client->to_read_ = header.size;
+        if(header.type != 1){
+            err->warn("[Main - buf_read_cb] Unknown msg type : {}", header.type);
         }
     }
-   // for(;;) {
-   //     char data[8192] = {0};
-   //     n = bufferevent_read(bev, data, sizeof(data));
-   //     if(n <= 0) {
-   //         break;
-   //     }
-   //     spdlog::get("network")->info("[Main - read_network] Read: {}", data);
-
-   //     /*  Append to the stack */
-   //     ss << data;
-
-   //     /*  Process the block here */
-   //     while() {
-   //         int data_size;
-   //         ss >> data_size;
-   //         vector<char> res(data_size);
-   //         ss.read(&res[0], data_size);
-   //         string str = string(res.begin(), res.begin()+data_size);
-   //         auto block = Block::deserialize(stringstream(str));
-   //         console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
-
-   //         if(block.process_block()) {
-   //             /*  Reset the mining */
-   //             console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
-   //             state->miner_state_->reset_mining();
-
-   //             /*  Relay the block to others if needed*/
-   //             state->broadcast_block(ss.str());
-   //         } else {
-   //             err->warn("[Miner - buf_read_cb] Process blocked failed");
-   //         }
-   //     }
 
 
-   //     ss.clear();
+    char buf[8192] = {0};
+    int read =  bufferevent_read(bev, buf, min(client->to_read_, sizeof(buf)));
+    client->buf_ss_ << buf;
+    client->to_read_ -= read;
 
-   //     /*  Pass next miner block, call miner_on_read */
-   //     //string blk_str = ss.str();
-   //     //ss.clear();
-   //     //if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
-   //     //    spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
-   //     //}
-   // }
+    if(client->to_read_ == 0) {
+        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        PingMsg msg = PingMsg::deserialize(client->buf_ss_);
+        if(!G_RECEIVED){
+            //Send to peers
+            console->info("[Main - buf_read_cb] Received Ping: {}", msg.to_string());
+            state->broadcast_ping(msg.start_us, msg.hop+1);
+        } else {
+            console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - msg.start_us, msg.hop);
+        }
+        //state->ping_state_->received_ = true;
+        G_RECEIVED = true;
+        client->buf_ss_.clear();
+    } else if (client->to_read_ < 0) {
+        err->warn("[Main - buf_read_cb] To read smaller than 0");
+        exit(1);
+    } else {
+        console->debug("[Main - buf_read_cb] More to read: {}", client->to_read_);
+    }
+
+    // for(;;) {
+    //     char data[8192] = {0};
+    //     n = bufferevent_read(bev, data, sizeof(data));
+    //     if(n <= 0) {
+    //         break;
+    //     }
+    //     spdlog::get("network")->info("[Main - read_network] Read: {}", data);
+
+    //     /*  Append to the stack */
+    //     ss << data;
+
+    //     /*  Process the block here */
+    //     while() {
+    //         int data_size;
+    //         ss >> data_size;
+    //         vector<char> res(data_size);
+    //         ss.read(&res[0], data_size);
+    //         string str = string(res.begin(), res.begin()+data_size);
+    //         auto block = Block::deserialize(stringstream(str));
+    //         console->debug("[Main - buf_read_cb] Block: {}" , block.to_string());
+
+    //         if(block.process_block()) {
+    //             /*  Reset the mining */
+    //             console->info("[Main - buf_read_cb] PROCESS BLOCK OK : {}", block.to_string());
+    //             state->miner_state_->reset_mining();
+
+    //             /*  Relay the block to others if needed*/
+    //             state->broadcast_block(ss.str());
+    //         } else {
+    //             err->warn("[Miner - buf_read_cb] Process blocked failed");
+    //         }
+    //     }
+
+
+    //     ss.clear();
+
+    //     /*  Pass next miner block, call miner_on_read */
+    //     //string blk_str = ss.str();
+    //     //ss.clear();
+    //     //if(bufferevent_write(state->w_bev_, blk_str.c_str(), blk_str.size()) != 0) {
+    //     //    spdlog::get("stderr")->warn("[Main - pthread_cond_destroy] failed writing to miner");
+    //     //}
+    // }
 }
 
 void error_cb(struct bufferevent *bev, short events, void *aux)
@@ -228,7 +244,7 @@ void error_cb(struct bufferevent *bev, short events, void *aux)
 /* *
  *  * Set a socket to non-blocking mode.
  *   */
-int
+    int
 setnonblock(int fd)
 {
     int flags;
@@ -244,7 +260,7 @@ setnonblock(int fd)
 }
 
 /*  Called when error  */
-void
+    void
 buf_err_cb(struct bufferevent *bev, short what, void *arg)
 {
     Client *client = static_cast<Client*>(arg);
@@ -258,7 +274,7 @@ buf_err_cb(struct bufferevent *bev, short what, void *arg)
     }
 
     /* TODO: Remove the client from the tailq. */
-    
+
     bufferevent_free(client->buf_ev_);
     close(client->sd_);
     free(client);
@@ -271,13 +287,12 @@ void on_accept(int socket, short ev, void *arg)
     int client_fd;
     struct sockaddr_in client_addr;
     XState * state = SYS_STATE;
-    Client* client;
     auto err = spdlog::get("stderr");
     auto console = spdlog::get("console");
     auto nwk_log = spdlog::get("network");
 
     /* Create Client Instance */
-    client = (Client *) calloc(1, sizeof(Client));
+    Client* client = new Client();
     if (client == NULL) {
         err->warn("err: client calloc failed\n");
         exit(1);
@@ -285,10 +300,7 @@ void on_accept(int socket, short ev, void *arg)
 
     /*  Networking accepting new client  */
     socklen_t client_len = sizeof(client_addr);
-
     client_fd = accept(socket, (struct sockaddr *)&client_addr, &client_len);
-    client->server_ip_ = client_addr.sin_addr.s_addr;
-
     char addr_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_addr.sin_addr), addr_ip, INET_ADDRSTRLEN);
     nwk_log->info("[Main - on_accept] Accepted : {}", addr_ip);
@@ -299,19 +311,20 @@ void on_accept(int socket, short ev, void *arg)
     }
 
     if (setnonblock(client_fd) < 0) {
-         err->warn("err: setnonblock failed");
+        err->warn("err: setnonblock failed");
     }
-    
+
     client->sd_ = client_fd;
+    client->server_ip_str_ = string(addr_ip);
     client->buf_ev_ = bufferevent_socket_new(state->evbase_, client_fd, 0);
 
     bufferevent_setcb(client->buf_ev_, buf_read_cb, NULL, buf_err_cb, client);
     bufferevent_enable(client->buf_ev_, EV_READ | EV_WRITE);
-
+    
     state->add_client_in(client);
 }
 
-int 
+    int 
 start_server()
 {
     /*  Record Peer */
@@ -335,30 +348,30 @@ start_server()
         cerr << "start_server(): bind failed" << endl;
         return -1;
     }
-    
+
     /* Listen  */
     res = listen(state->server.sd_, 100);
     if (res == -1) {
         //error
         return -1;
     }
-    
+
     /*  Set reusable  */
     int reuseaddr_on = 1;
     setsockopt(state->server.sd_, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on, 
-                sizeof(reuseaddr_on));
+            sizeof(reuseaddr_on));
 
 
     struct event *ev_accept; 
     ev_accept = event_new(state->evbase_, state->server.sd_, EV_READ | EV_PERSIST, on_accept, state);
     event_add(ev_accept, NULL);
-    
+
     /*  Running  */
     spdlog::get("network") -> info("[MAIN - start_server] Waiting for connection");
     return 0;
 }
 
-void
+    void
 miner_on_read(struct bufferevent *bev, void *arg)
 {
     size_t n;
@@ -372,7 +385,7 @@ miner_on_read(struct bufferevent *bev, void *arg)
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
-        
+
 
         ss << data;
         auto block = Block::deserialize(ss);
@@ -389,14 +402,14 @@ miner_on_read(struct bufferevent *bev, void *arg)
             err->warn("[Miner - miner_on_read] Process blocked failed");
         }
     }
-    
+
 }
 
 
 /*  
  *  When received a block from the miner
  *  */
-void 
+    void 
 main_on_read(struct bufferevent *bev, void *arg) 
 {
     size_t n;
@@ -410,9 +423,9 @@ main_on_read(struct bufferevent *bev, void *arg)
         n = bufferevent_read(bev, data, sizeof(data));
         if(n<=0)
             break;
-        
+
         spdlog::get("network")->info("[Main - on_read] Read data: {}", data); 
-            
+
         /*  Broadcast to peers */
         ss << data;
         state->broadcast_block(ss.str());
@@ -421,14 +434,14 @@ main_on_read(struct bufferevent *bev, void *arg)
 }
 
 
-void 
+    void 
 on_mine(int fd, short events, void* aux) 
 {
     auto console = spdlog::get("console");
     //XState* state = static_cast<XState*>(aux);
     MinerState *my_state = static_cast<MinerState*>(aux);
     string data;
-    
+
     //FIXME: synchronize and report nonce
     /*  Create new block */
     auto blk_idx = BlockIndex::get_best_blkidx();
@@ -436,12 +449,12 @@ on_mine(int fd, short events, void* aux)
     int nonce = rand() % 100;
     console->debug("[Miner - on_mine] USING NONCE : {}", nonce);
     auto new_block = new Block(blk_idx,nonce, my_state->name_);
-    
+
     /*  Add new block */
     new_block->accept_block();
     //debug_chains();
     console->info("[Miner - on_mine] NEW BLOCK: {}" , new_block->to_string());
-    
+
     /*  Serialize the block for sending */
     data = new_block->serialize();
 
@@ -450,7 +463,7 @@ on_mine(int fd, short events, void* aux)
     }
 }
 
-void *
+    void *
 mine(void* aux) 
 {
     auto console = spdlog::get("console");
@@ -460,7 +473,7 @@ mine(void* aux)
     console->info("[Miner - mine] Miner running\n"); 
     struct timespec ts;
     struct timeval tp;
-    
+
     /*  Setup MIning Event */
     //struct timeval tv { my_state->time_, 0};
     double num = my_state->dis_(my_state->engine_);
@@ -472,13 +485,13 @@ mine(void* aux)
 
     /* Loop until the main thread breaks the evloop */
     event_base_loop(my_state->evbase_, 0);
-    
+
     console->info("[Miner - mine] Miner exiting\n"); 
     pthread_exit(NULL);
 }
 
 
-XState*
+    XState*
 init()
 {
     auto console = spdlog::get("console");
@@ -486,7 +499,7 @@ init()
 
     /*  FIXME: check input */
     int res; 
-    
+
     /* Init State relevant info */
     XState* state = new XState(); 
     assert(state);
@@ -497,8 +510,8 @@ init()
     state->my_addr_ = SYS_CONFIG.my_addr;
     state->msg_size_ = SYS_CONFIG.msg_size;
 
-    
-    
+
+
     /*  Init Server Instance */
     nt_log->info("[Main - init] Starting Server\n");
     res = start_server();
@@ -515,7 +528,7 @@ init()
 
     ///*  Set up mining thread */
     //create_miner();
-    
+
     ///* Set up the chain genesis block */
     //Block genesis = Block::genesis();
     //genesis.add_to_chain();
@@ -539,7 +552,7 @@ int main(int argc, char*argv[])
     auto console = spdlog::stdout_color_mt("console");
     auto err_log = spdlog::stderr_color_mt("stderr");
     auto network = spdlog::stdout_color_mt("network");
-    
+
     console->info("Starting");
     /*  Read in arguments  */
     parse_cmd(argc, argv);
@@ -558,19 +571,19 @@ int main(int argc, char*argv[])
 }
 
 
-void 
+    void 
 on_kill(int fd, short events, void* aux)
 {
     //XState* state = static_cast<XState*>(aux);
     XState* state = SYS_STATE;
-    
+
     //struct timeval tv { 1,0};
     spdlog::get("console")->info("Shutting down miner");
     //G_DO_MINE = false;
     event_base_loopbreak(state->evbase_);
 }
 
-int
+    int
 create_miner() 
 {
     XState* state = SYS_STATE; 
@@ -602,7 +615,7 @@ create_miner()
     bufferevent_enable(miner_state->w_bev_, EV_WRITE);
     bufferevent_enable(miner_state->r_bev_, EV_READ | EV_PERSIST);
     bufferevent_enable(state->w_bev_, EV_WRITE);
-    
+
     /*  Set up callbacks for the mining */
     bufferevent_setcb(state->r_bev_, main_on_read, NULL, error_cb, state);
     bufferevent_setcb(miner_state->r_bev_, miner_on_read, NULL, error_cb, miner_state);
@@ -623,7 +636,7 @@ create_miner()
 }
 
 
-static void 
+    static void 
 check_result(bool ok, int fatal, const char* msg) 
 {
     if(!ok) {
@@ -647,7 +660,7 @@ void MinerState::reset_mining()
     if (event_del(mine_ev_) != 0) {
         spdlog::get("stderr")->warn("[MINER - reset_mining] event_del faield");
     }
-    
+
     /* Random sleep time */
     double num = dis_(engine_);
     struct timeval tv {(int)num, 0};
@@ -660,7 +673,7 @@ void MinerState::reset_mining()
 void XState::broadcast_block(string data) 
 {
     auto err = spdlog::get("stderr");
-   
+
     /*  Pad the data, so that multiple blocks in buffer can be read */
     data.append("*");
     for(auto itr = out_clients_.begin() ; itr != out_clients_.end(); ++itr) {
@@ -683,25 +696,42 @@ void XState::broadcast_block(string data)
 void XState::broadcast_ping(int64_t start, int hop) 
 {
     auto nwk = spdlog::get("network");
-    
+
     /*  Prepare Ping message  */
+    //nwk->info("[Main- broadcast_ping] Header : {}", header.to_string());
+    //char header_buf[MSG_HEADER_SIZE] = {0};
+    //header.save(header_buf);
+
+    //nwk->info("[Main - broadcast_ping] Msg string: {}", msg.to_string());
+    //nwk->info("[Main - broadcast_ping] Sending Data: {}", to_send);
+    /*  Broadcast to outgoing peers */
+
     PingMsg msg(start, hop, this->msg_size_);
     string data = msg.save();
-    nwk->info("[Main - broadcast_ping] Msg string: {}", msg.to_string());
-    nwk->info("[Main - broadcast_ping] Sending Data: {}", data);
-    /*  Broadcast to outgoing peers */
+
+    MsgHeader header(MSG_TYPE_PING, data.size());
+
+
+
     for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
         auto clt = itr->second;
 
-        if(bufferevent_write(clt->buf_ev_, data.c_str(), data.size()) !=0) {
+        auto tmp = evbuffer_new();
+        evbuffer_add(tmp, &header, sizeof(MsgHeader));
+        evbuffer_add(tmp, data.c_str(), data.size());
+
+        if(bufferevent_write_buffer(clt->buf_ev_, tmp) !=0) {
             nwk->warn("[Main - broadcast_ping] Failed");
         } else {
             nwk->info("[Main - broadcast_ping] Sent to {}, Hop: {}", itr->first, hop); 
         }
+
+        evbuffer_free(tmp);
     }
+
 }
 
-Client* 
+    Client* 
 XState::connect_peer(PeerAddr& peer)
 {
     Client * client = static_cast<Client*>(calloc(1, sizeof(Client)));
@@ -752,7 +782,7 @@ XState::connect_peer(PeerAddr& peer)
     client->buf_ev_ = bufferevent_socket_new(this->evbase_, client->sd_, 0);
     res = bufferevent_enable(client->buf_ev_, EV_WRITE|EV_READ);
     check_result(res == 0, 0, "connect_peer(): bufferevent_enable failed");
-    
+
     //TODO:BUG:
     this->add_client_out(client);
     //this->out_client_ = client;
@@ -761,27 +791,27 @@ XState::connect_peer(PeerAddr& peer)
 
 void XState::add_client_out(Client * c) {
     auto nw_log = spdlog::get("network");
-    
+
     if(this->out_clients_.count(c->server_host_name_)) {
         nw_log->info("[Main - add_client_out] Duplicate Client {}", c->server_host_name_); 
     }
-    
+
     /*  Overwrite with the new one */
     this->out_clients_.insert(make_pair(c->server_host_name_, c));
 }
 
 void XState::add_client_in(Client * c) {
     auto nw_log = spdlog::get("network");
-    
-    if(this->in_clients_.count(c->server_host_name_)) {
-        nw_log->info("[Main - add_client_in] Duplicate Client {}", c->server_host_name_); 
+
+    if(this->in_clients_.count(c->server_ip_str_)) {
+        nw_log->info("[Main - add_client_in] Duplicate Client {}", c->server_ip_str_); 
     }
-    
+
     /*  Overwrite with the new one */
     this->in_clients_.insert(make_pair(c->server_host_name_, c));
 }
 
-static void
+    static void
 parse_cmd(int argc, char* argv[]) 
 {
     auto console = spdlog::get("console");
@@ -789,7 +819,7 @@ parse_cmd(int argc, char* argv[])
     desc.add_options()
         ("input-dir", b_po::value<string>(), "input data")
         ;
-    
+
     b_po::store(b_po::parse_command_line(argc, argv, desc), INPUT_VAR_MAP);
     b_po::notify(INPUT_VAR_MAP);
 
