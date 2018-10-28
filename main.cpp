@@ -67,6 +67,7 @@ void buf_err_cb(struct bufferevent *bev, short what, void *arg);
 int create_miner();
 void init_ping();
 static void check_result(bool, int, const char*);
+static void set_log_level();
 static stack<int> MINE_BLOCKS_Q;
 
 
@@ -168,10 +169,11 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         PingMsg msg = PingMsg::deserialize(client->buf_ss_);
         if(!G_RECEIVED){
             //Send to peers
+            console->warn("****{},{}****",end_us- msg.start_us, msg.hop);
             console->info("[Main - buf_read_cb] Received Ping: {}", msg.to_string());
             state->broadcast_ping(msg.start_us, msg.hop+1);
         } else {
-            console->debug("[Main - buf_read_cb] Repeated {}, Hope {}", end_us - msg.start_us, msg.hop);
+            console->debug("[Main - buf_read_cb] Repeated {}, Hop {}", end_us - msg.start_us, msg.hop);
         }
         //state->ping_state_->received_ = true;
         G_RECEIVED = true;
@@ -553,10 +555,11 @@ int main(int argc, char*argv[])
     auto err_log = spdlog::stderr_color_mt("stderr");
     auto network = spdlog::stdout_color_mt("network");
 
-    console->info("Starting");
+
     /*  Read in arguments  */
     parse_cmd(argc, argv);
-
+    console->info("Starting");
+    set_log_level();
 
 
     /*  Init randome seed */
@@ -581,6 +584,30 @@ on_kill(int fd, short events, void* aux)
     spdlog::get("console")->info("Shutting down miner");
     //G_DO_MINE = false;
     event_base_loopbreak(state->evbase_);
+}
+
+static void
+set_log_level()
+{
+    spdlog::get("console")->info("Setting log level : {}", SYS_CONFIG.log_level);
+    switch(SYS_CONFIG.log_level) {
+        case 0: 
+            spdlog::set_level(spdlog::level::trace);
+            break;
+        case 1:
+            spdlog::set_level(spdlog::level::debug);
+            break;
+        case 2:
+            spdlog::set_level(spdlog::level::info);
+            break;
+        case 3:
+            spdlog::set_level(spdlog::level::warn);
+            break;
+        case 4:
+            spdlog::set_level(spdlog::level::critical);
+            break;
+    }
+
 }
 
     int

@@ -34,6 +34,7 @@ namespace xcoin
             string my_addr;
             int miner_timeout;
             int msg_size;
+            int log_level;
 
         void print() {
             printf("----------System Config-------\n");

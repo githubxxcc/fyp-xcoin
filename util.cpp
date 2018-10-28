@@ -76,6 +76,7 @@ namespace xcoin {
         config.my_addr = *file->get_as<string>("my-addr");
         config.miner_timeout = file->get_as<int>("miner-timeout").value_or(30); 
         config.msg_size = file->get_as<int>("msg-size").value_or(50);
+        config.log_level = file->get_as<int>("log-level").value_or(1);
 
         return config;
     }

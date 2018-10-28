@@ -75,7 +75,18 @@ def connect_graph(node_num, peer_cnt, const_out_deg=True):
     #print(temp_graph.todense())
     return temp_graph
 
-def report_stat(graph, node_num):
+
+def parse_log(node_id, latency, hop):
+    log_file = "./shadow.data/hosts/peer%d/stdout-peer%d.xcoin.1000.log" % (node_id, node_id)
+    data_lines = [line.rstrip('\n')[line.find("****"):] for line in open(log_file) if line.find("****") != -1 ]
+    data_str = [line.strip('****') for line in data_lines][0]
+    data_arr = data_str.split(',')
+    latency.append(int(data_arr[0].strip()) / 1000)
+    hop.append(int(data_arr[1].strip()))
+
+
+
+def report_stat(graph, node_num, args):
     dis, y = csgraph.dijkstra(graph, return_predecessors=True, unweighted=True)
     avg_dis = dis.sum() / (node_num * (node_num-1))
     num_edges = graph.count_nonzero()
@@ -86,6 +97,27 @@ def report_stat(graph, node_num):
                 dis.max(),
                 num_edges
                 ))
+
+
+    # Walk through all the log files
+    latency=[]
+    hop=[]
+    for node_id in range(1, node_num):
+        parse_log(node_id, latency, hop)
+    print("Avg Latency: %f" % np.mean(latency))
+    print("Avg Hop : %f" % np.mean(hop))
+
+    avg_latency = np.mean(latency)
+    avg_hop = np.mean(hop)
+    # Write Data to Benchmark file
+    out_file = "./benchmark/latency.csv"
+    with open(out_file, "a+") as f :
+        # msgsize, avg_dis, avg_latency, avg_hop,
+        f.write("%d,%d,%d,%f,%f,%f,\n"
+                % (args.nodenum, args.peercnt, args.msgsize, avg_dis,avg_latency, avg_hop))
+        print("%d,%d, %d, %f, %f, %f,"
+                % (args.nodenum, args.peercnt, args.msgsize, avg_dis,avg_latency, avg_hop))
+        f.close()
 
 
 def setup_multiple_node_xml(node_num):
@@ -119,6 +151,7 @@ def setup_multiple_node_data(node_num, graph, args):
         file.write('my-addr = "peer%d"\n' % i)
         file.write('my-port = %d\n' % (BASE_PORT+i))
         file.write("msg-size = %d\n" % args.msgsize)
+        file.write('log-level = %d\n' % args.log)
         file.write('miner-timeout = %d\n\n'% (30))
 
         # Write peers information
@@ -128,13 +161,23 @@ def setup_multiple_node_data(node_num, graph, args):
             file.write('peer-port = %d\n' % (BASE_PORT + peer))
         file.close()
 
+def do_experiment(args):
+    graph = connect_graph(args.nodenum, args.peercnt, const_out_deg=True)
+    setup_multiple_node_xml(args.nodenum)
+    setup_multiple_node_data(args.nodenum, graph, args)
+    run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
+    print(graph)
+    report_stat(graph, args.nodenum, args)
+
+
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):
-    os.system("shadow -l critical %s" % ("./example_multiple_generated.xml"))
+    os.system("shadow -l critical --interface-buffer=2097152 --socket-recv-buffer=2097152 --socket-send-buffer=2097152 %s" % ("./example_multiple_generated.xml"))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating shadow config xml and running shadow experiments.' )
     parser.add_argument("--nodenum", type=int, help="Number of bitcoin nodes for experiment.")
     parser.add_argument("--msgsize", type=int, help="Size of msg.")
+    parser.add_argument("--log", type=int, help="Log level [0 - 4] = [trace,debug,ifno,warn,critical].")
     parser.add_argument("--peercnt", type=int, help="Number of peers.")
     parser.add_argument("--workernum", type=int, help="Number of shadow workers for the simulation. Multiple worker can accelerate the speed of the simulation.")
 
@@ -147,14 +190,18 @@ if __name__ == '__main__':
         args.msgsize = 4
     if args.peercnt == None:
         args.peercnt = 1
+    if args.log == None:
+        args.log = 1
 
-    graph = connect_graph(args.nodenum, args.peercnt, const_out_deg=True)
-    setup_multiple_node_xml(args.nodenum)
-    setup_multiple_node_data(args.nodenum, graph, args)
-    run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
+    # Prep result file
+    os.system("rm -rf ./benchmark/*")
+    with open("./benchmark/latency.csv", "w+") as f:
+        f.write("node_num,peer_cnt,msg_size,avg_dis,avg_latency,avg_hop\n")
+        f.close()
 
-    print(graph)
+        do_experiment(args)
 
-    report_stat(graph, args.nodenum)
+
+
 
 

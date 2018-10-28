@@ -93,4 +93,544 @@
   <host id="peer19">
     <process arguments="--input-dir=./data/peer19.toml" plugin="xcoin" starttime="1"/>
   </host>
+  <host id="peer20">
+    <process arguments="--input-dir=./data/peer20.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer21">
+    <process arguments="--input-dir=./data/peer21.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer22">
+    <process arguments="--input-dir=./data/peer22.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer23">
+    <process arguments="--input-dir=./data/peer23.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer24">
+    <process arguments="--input-dir=./data/peer24.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer25">
+    <process arguments="--input-dir=./data/peer25.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer26">
+    <process arguments="--input-dir=./data/peer26.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer27">
+    <process arguments="--input-dir=./data/peer27.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer28">
+    <process arguments="--input-dir=./data/peer28.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer29">
+    <process arguments="--input-dir=./data/peer29.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer30">
+    <process arguments="--input-dir=./data/peer30.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer31">
+    <process arguments="--input-dir=./data/peer31.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer32">
+    <process arguments="--input-dir=./data/peer32.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer33">
+    <process arguments="--input-dir=./data/peer33.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer34">
+    <process arguments="--input-dir=./data/peer34.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer35">
+    <process arguments="--input-dir=./data/peer35.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer36">
+    <process arguments="--input-dir=./data/peer36.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer37">
+    <process arguments="--input-dir=./data/peer37.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer38">
+    <process arguments="--input-dir=./data/peer38.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer39">
+    <process arguments="--input-dir=./data/peer39.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer40">
+    <process arguments="--input-dir=./data/peer40.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer41">
+    <process arguments="--input-dir=./data/peer41.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer42">
+    <process arguments="--input-dir=./data/peer42.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer43">
+    <process arguments="--input-dir=./data/peer43.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer44">
+    <process arguments="--input-dir=./data/peer44.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer45">
+    <process arguments="--input-dir=./data/peer45.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer46">
+    <process arguments="--input-dir=./data/peer46.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer47">
+    <process arguments="--input-dir=./data/peer47.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer48">
+    <process arguments="--input-dir=./data/peer48.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer49">
+    <process arguments="--input-dir=./data/peer49.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer50">
+    <process arguments="--input-dir=./data/peer50.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer51">
+    <process arguments="--input-dir=./data/peer51.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer52">
+    <process arguments="--input-dir=./data/peer52.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer53">
+    <process arguments="--input-dir=./data/peer53.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer54">
+    <process arguments="--input-dir=./data/peer54.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer55">
+    <process arguments="--input-dir=./data/peer55.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer56">
+    <process arguments="--input-dir=./data/peer56.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer57">
+    <process arguments="--input-dir=./data/peer57.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer58">
+    <process arguments="--input-dir=./data/peer58.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer59">
+    <process arguments="--input-dir=./data/peer59.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer60">
+    <process arguments="--input-dir=./data/peer60.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer61">
+    <process arguments="--input-dir=./data/peer61.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer62">
+    <process arguments="--input-dir=./data/peer62.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer63">
+    <process arguments="--input-dir=./data/peer63.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer64">
+    <process arguments="--input-dir=./data/peer64.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer65">
+    <process arguments="--input-dir=./data/peer65.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer66">
+    <process arguments="--input-dir=./data/peer66.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer67">
+    <process arguments="--input-dir=./data/peer67.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer68">
+    <process arguments="--input-dir=./data/peer68.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer69">
+    <process arguments="--input-dir=./data/peer69.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer70">
+    <process arguments="--input-dir=./data/peer70.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer71">
+    <process arguments="--input-dir=./data/peer71.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer72">
+    <process arguments="--input-dir=./data/peer72.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer73">
+    <process arguments="--input-dir=./data/peer73.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer74">
+    <process arguments="--input-dir=./data/peer74.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer75">
+    <process arguments="--input-dir=./data/peer75.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer76">
+    <process arguments="--input-dir=./data/peer76.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer77">
+    <process arguments="--input-dir=./data/peer77.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer78">
+    <process arguments="--input-dir=./data/peer78.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer79">
+    <process arguments="--input-dir=./data/peer79.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer80">
+    <process arguments="--input-dir=./data/peer80.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer81">
+    <process arguments="--input-dir=./data/peer81.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer82">
+    <process arguments="--input-dir=./data/peer82.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer83">
+    <process arguments="--input-dir=./data/peer83.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer84">
+    <process arguments="--input-dir=./data/peer84.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer85">
+    <process arguments="--input-dir=./data/peer85.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer86">
+    <process arguments="--input-dir=./data/peer86.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer87">
+    <process arguments="--input-dir=./data/peer87.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer88">
+    <process arguments="--input-dir=./data/peer88.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer89">
+    <process arguments="--input-dir=./data/peer89.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer90">
+    <process arguments="--input-dir=./data/peer90.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer91">
+    <process arguments="--input-dir=./data/peer91.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer92">
+    <process arguments="--input-dir=./data/peer92.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer93">
+    <process arguments="--input-dir=./data/peer93.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer94">
+    <process arguments="--input-dir=./data/peer94.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer95">
+    <process arguments="--input-dir=./data/peer95.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer96">
+    <process arguments="--input-dir=./data/peer96.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer97">
+    <process arguments="--input-dir=./data/peer97.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer98">
+    <process arguments="--input-dir=./data/peer98.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer99">
+    <process arguments="--input-dir=./data/peer99.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer100">
+    <process arguments="--input-dir=./data/peer100.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer101">
+    <process arguments="--input-dir=./data/peer101.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer102">
+    <process arguments="--input-dir=./data/peer102.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer103">
+    <process arguments="--input-dir=./data/peer103.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer104">
+    <process arguments="--input-dir=./data/peer104.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer105">
+    <process arguments="--input-dir=./data/peer105.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer106">
+    <process arguments="--input-dir=./data/peer106.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer107">
+    <process arguments="--input-dir=./data/peer107.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer108">
+    <process arguments="--input-dir=./data/peer108.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer109">
+    <process arguments="--input-dir=./data/peer109.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer110">
+    <process arguments="--input-dir=./data/peer110.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer111">
+    <process arguments="--input-dir=./data/peer111.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer112">
+    <process arguments="--input-dir=./data/peer112.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer113">
+    <process arguments="--input-dir=./data/peer113.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer114">
+    <process arguments="--input-dir=./data/peer114.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer115">
+    <process arguments="--input-dir=./data/peer115.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer116">
+    <process arguments="--input-dir=./data/peer116.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer117">
+    <process arguments="--input-dir=./data/peer117.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer118">
+    <process arguments="--input-dir=./data/peer118.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer119">
+    <process arguments="--input-dir=./data/peer119.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer120">
+    <process arguments="--input-dir=./data/peer120.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer121">
+    <process arguments="--input-dir=./data/peer121.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer122">
+    <process arguments="--input-dir=./data/peer122.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer123">
+    <process arguments="--input-dir=./data/peer123.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer124">
+    <process arguments="--input-dir=./data/peer124.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer125">
+    <process arguments="--input-dir=./data/peer125.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer126">
+    <process arguments="--input-dir=./data/peer126.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer127">
+    <process arguments="--input-dir=./data/peer127.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer128">
+    <process arguments="--input-dir=./data/peer128.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer129">
+    <process arguments="--input-dir=./data/peer129.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer130">
+    <process arguments="--input-dir=./data/peer130.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer131">
+    <process arguments="--input-dir=./data/peer131.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer132">
+    <process arguments="--input-dir=./data/peer132.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer133">
+    <process arguments="--input-dir=./data/peer133.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer134">
+    <process arguments="--input-dir=./data/peer134.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer135">
+    <process arguments="--input-dir=./data/peer135.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer136">
+    <process arguments="--input-dir=./data/peer136.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer137">
+    <process arguments="--input-dir=./data/peer137.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer138">
+    <process arguments="--input-dir=./data/peer138.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer139">
+    <process arguments="--input-dir=./data/peer139.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer140">
+    <process arguments="--input-dir=./data/peer140.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer141">
+    <process arguments="--input-dir=./data/peer141.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer142">
+    <process arguments="--input-dir=./data/peer142.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer143">
+    <process arguments="--input-dir=./data/peer143.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer144">
+    <process arguments="--input-dir=./data/peer144.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer145">
+    <process arguments="--input-dir=./data/peer145.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer146">
+    <process arguments="--input-dir=./data/peer146.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer147">
+    <process arguments="--input-dir=./data/peer147.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer148">
+    <process arguments="--input-dir=./data/peer148.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer149">
+    <process arguments="--input-dir=./data/peer149.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer150">
+    <process arguments="--input-dir=./data/peer150.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer151">
+    <process arguments="--input-dir=./data/peer151.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer152">
+    <process arguments="--input-dir=./data/peer152.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer153">
+    <process arguments="--input-dir=./data/peer153.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer154">
+    <process arguments="--input-dir=./data/peer154.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer155">
+    <process arguments="--input-dir=./data/peer155.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer156">
+    <process arguments="--input-dir=./data/peer156.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer157">
+    <process arguments="--input-dir=./data/peer157.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer158">
+    <process arguments="--input-dir=./data/peer158.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer159">
+    <process arguments="--input-dir=./data/peer159.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer160">
+    <process arguments="--input-dir=./data/peer160.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer161">
+    <process arguments="--input-dir=./data/peer161.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer162">
+    <process arguments="--input-dir=./data/peer162.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer163">
+    <process arguments="--input-dir=./data/peer163.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer164">
+    <process arguments="--input-dir=./data/peer164.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer165">
+    <process arguments="--input-dir=./data/peer165.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer166">
+    <process arguments="--input-dir=./data/peer166.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer167">
+    <process arguments="--input-dir=./data/peer167.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer168">
+    <process arguments="--input-dir=./data/peer168.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer169">
+    <process arguments="--input-dir=./data/peer169.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer170">
+    <process arguments="--input-dir=./data/peer170.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer171">
+    <process arguments="--input-dir=./data/peer171.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer172">
+    <process arguments="--input-dir=./data/peer172.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer173">
+    <process arguments="--input-dir=./data/peer173.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer174">
+    <process arguments="--input-dir=./data/peer174.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer175">
+    <process arguments="--input-dir=./data/peer175.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer176">
+    <process arguments="--input-dir=./data/peer176.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer177">
+    <process arguments="--input-dir=./data/peer177.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer178">
+    <process arguments="--input-dir=./data/peer178.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer179">
+    <process arguments="--input-dir=./data/peer179.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer180">
+    <process arguments="--input-dir=./data/peer180.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer181">
+    <process arguments="--input-dir=./data/peer181.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer182">
+    <process arguments="--input-dir=./data/peer182.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer183">
+    <process arguments="--input-dir=./data/peer183.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer184">
+    <process arguments="--input-dir=./data/peer184.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer185">
+    <process arguments="--input-dir=./data/peer185.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer186">
+    <process arguments="--input-dir=./data/peer186.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer187">
+    <process arguments="--input-dir=./data/peer187.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer188">
+    <process arguments="--input-dir=./data/peer188.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer189">
+    <process arguments="--input-dir=./data/peer189.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer190">
+    <process arguments="--input-dir=./data/peer190.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer191">
+    <process arguments="--input-dir=./data/peer191.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer192">
+    <process arguments="--input-dir=./data/peer192.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer193">
+    <process arguments="--input-dir=./data/peer193.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer194">
+    <process arguments="--input-dir=./data/peer194.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer195">
+    <process arguments="--input-dir=./data/peer195.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer196">
+    <process arguments="--input-dir=./data/peer196.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer197">
+    <process arguments="--input-dir=./data/peer197.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer198">
+    <process arguments="--input-dir=./data/peer198.toml" plugin="xcoin" starttime="1"/>
+  </host>
+  <host id="peer199">
+    <process arguments="--input-dir=./data/peer199.toml" plugin="xcoin" starttime="1"/>
+  </host>
 </shadow>
