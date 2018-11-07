@@ -155,35 +155,40 @@ void buf_read_cb(struct bufferevent *bev, void *arg )
         client->to_read_ = header.size;
         if(header.type != 1){
             err->warn("[Main - buf_read_cb] Unknown msg type : {}", header.type);
+            return;
         }
     }
 
+    while(1) {
+        char buf[8192] = {0};
+        int read =  bufferevent_read(bev, buf, min(client->to_read_, sizeof(buf)));
+        client->buf_ss_ << buf;
+        client->to_read_ -= read;
 
-    char buf[8192] = {0};
-    int read =  bufferevent_read(bev, buf, min(client->to_read_, sizeof(buf)));
-    client->buf_ss_ << buf;
-    client->to_read_ -= read;
+        if(read <= 0) break;
 
-    if(client->to_read_ == 0) {
-        int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        PingMsg msg = PingMsg::deserialize(client->buf_ss_);
-        if(!G_RECEIVED){
-            //Send to peers
-            console->warn("****{},{}****",end_us- msg.start_us, msg.hop);
-            console->info("[Main - buf_read_cb] Received Ping: {}", msg.to_string());
-            state->broadcast_ping(msg.start_us, msg.hop+1);
+        if(client->to_read_ == 0) {
+            int64_t end_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            PingMsg msg = PingMsg::deserialize(client->buf_ss_);
+            if(!G_RECEIVED){
+                //Send to peers
+                console->critical("****{},{}****",end_us- msg.start_us, msg.hop);
+                console->info("[Main - buf_read_cb] Received Ping: {}", msg.to_string());
+                state->broadcast_ping(msg.start_us, msg.hop+1);
+            } else {
+                console->debug("[Main - buf_read_cb] Repeated {}, Hop {}", end_us - msg.start_us, msg.hop);
+            }
+            //state->ping_state_->received_ = true;
+            G_RECEIVED = true;
+            client->buf_ss_.clear();
+        } else if (client->to_read_ < 0) {
+            err->warn("[Main - buf_read_cb] To read smaller than 0");
+            exit(1);
         } else {
-            console->debug("[Main - buf_read_cb] Repeated {}, Hop {}", end_us - msg.start_us, msg.hop);
+            console->debug("[Main - buf_read_cb] More to read: {}", client->to_read_);
         }
-        //state->ping_state_->received_ = true;
-        G_RECEIVED = true;
-        client->buf_ss_.clear();
-    } else if (client->to_read_ < 0) {
-        err->warn("[Main - buf_read_cb] To read smaller than 0");
-        exit(1);
-    } else {
-        console->debug("[Main - buf_read_cb] More to read: {}", client->to_read_);
     }
+
 
     // for(;;) {
     //     char data[8192] = {0};
@@ -734,11 +739,9 @@ void XState::broadcast_ping(int64_t start, int hop)
     /*  Broadcast to outgoing peers */
 
     PingMsg msg(start, hop, this->msg_size_);
+
     string data = msg.save();
-
     MsgHeader header(MSG_TYPE_PING, data.size());
-
-
 
     for(auto itr = out_clients_.begin(); itr != out_clients_.end(); ++itr) {
         auto clt = itr->second;

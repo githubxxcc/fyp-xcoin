@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import argparse
 import lxml.etree as ET
@@ -44,6 +45,7 @@ def generate_graph(node_num, peer_num, const_in_deg=False):
 
 def connect_graph(node_num, peer_cnt, const_out_deg=True):
     graph = generate_graph(node_num, peer_cnt)
+    print("Graph generated")
     num_cmpnt, cmpnts  = csgraph.connected_components(graph, True, 'strong')
     # print(graph)
     temp_graph = graph.tolil(False)
@@ -86,7 +88,7 @@ def parse_log(node_id, latency, hop):
 
 
 
-def report_stat(graph, node_num, args):
+def report_stat(graph, node_num, args, out_file):
     dis, y = csgraph.dijkstra(graph, return_predecessors=True, unweighted=True)
     avg_dis = dis.sum() / (node_num * (node_num-1))
     num_edges = graph.count_nonzero()
@@ -110,10 +112,9 @@ def report_stat(graph, node_num, args):
     avg_latency = np.mean(latency)
     avg_hop = np.mean(hop)
     # Write Data to Benchmark file
-    out_file = "./benchmark/latency.csv"
     with open(out_file, "a+") as f :
         # msgsize, avg_dis, avg_latency, avg_hop,
-        f.write("%d,%d,%d,%f,%f,%f,\n"
+        f.write("%d,%d,%d,%f,%f,%f\n"
                 % (args.nodenum, args.peercnt, args.msgsize, avg_dis,avg_latency, avg_hop))
         print("%d,%d, %d, %f, %f, %f,"
                 % (args.nodenum, args.peercnt, args.msgsize, avg_dis,avg_latency, avg_hop))
@@ -161,17 +162,19 @@ def setup_multiple_node_data(node_num, graph, args):
             file.write('peer-port = %d\n' % (BASE_PORT + peer))
         file.close()
 
-def do_experiment(args):
+def do_experiment(args, out_file):
     graph = connect_graph(args.nodenum, args.peercnt, const_out_deg=True)
+    print("Graph Found ...")
     setup_multiple_node_xml(args.nodenum)
     setup_multiple_node_data(args.nodenum, graph, args)
+    print("Running Shadow...")
     run_shadow_bitcoin_multiple_node(args.nodenum, args.workernum)
-    print(graph)
-    report_stat(graph, args.nodenum, args)
+    #print(graph)
+    report_stat(graph, args.nodenum, args, out_file)
 
 
 def run_shadow_bitcoin_multiple_node(node_num, worker_num):
-    os.system("shadow -l critical --interface-buffer=2097152 --socket-recv-buffer=2097152 --socket-send-buffer=2097152 %s" % ("./example_multiple_generated.xml"))
+    os.system("shadow -w %d -l critical --interface-buffer=2097152000 --socket-recv-buffer=2097152000 --socket-send-buffer=2097152000 --tcp-windows=1000 %s" % (worker_num, "./example_multiple_generated.xml"))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for generating shadow config xml and running shadow experiments.' )
@@ -195,11 +198,11 @@ if __name__ == '__main__':
 
     # Prep result file
     os.system("rm -rf ./benchmark/*")
-    with open("./benchmark/latency.csv", "w+") as f:
+    out_file = "./benchmark/latency.csv"
+    with open(out_file, "w+") as f:
         f.write("node_num,peer_cnt,msg_size,avg_dis,avg_latency,avg_hop\n")
         f.close()
-
-        do_experiment(args)
+    do_experiment(args, out_file)
 
 
 

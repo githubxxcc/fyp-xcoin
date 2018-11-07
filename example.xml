@@ -1,4 +1,4 @@
-<shadow preload="~/.shadow/lib/libshadow-interpose.so" stoptime="1000">
+<shadow preload="~/.shadow/lib/libshadow-interpose.so" stoptime="100">
     <!-- our network. the xml data here could instead be specified in a separate topology.xml file and given here as:
     <topology path="/path/to/topology.xml" />
     -->
@@ -26,7 +26,7 @@
           <data key="d6">0</data>
         </node>
         <edge source="poi-1" target="poi-1">
-          <data key="d7">100.0</data>
+          <data key="d7">20.0</data>
           <data key="d8">0.0</data>
           <data key="d9">0.0</data>
         </edge>
